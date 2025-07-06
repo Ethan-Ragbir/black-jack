@@ -1,0 +1,23 @@
+body {
+font-family: Aria;, sans-serif;
+text-align: center;
+background: #1c1c1c;
+color: white;
+}
+
+#game {
+margin-top: 20px;
+}
+#player-hand, #dealer-hand {
+margin: 10px;
+padding: 10px;
+border: 1px solid #ccc;
+min-height: 50px;
+}
+
+button {
+  margin: 5px;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+}
