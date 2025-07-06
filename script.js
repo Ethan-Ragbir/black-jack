@@ -1,159 +1,127 @@
-window.onload = function () {
-  const suits = ['♠', '♥', '♦', '♣'];
-  const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
-  let deck = [], playerHand = [], dealerHand = [], bankroll = 1000, currentBet = 0;
+window.onload = () => {
+  let bankroll = 0;
+  let numHands = 1;
+  let hands = []; // each: { bet, cards: [], state }
 
-  const dealerCardsDiv = document.getElementById('dealer-cards');
-  const playerCardsDiv = document.getElementById('player-cards');
-  const dealerScoreSpan = document.getElementById('dealer-score');
-  const playerScoreSpan = document.getElementById('player-score');
-  const bankrollSpan = document.getElementById('bankroll');
-  const resultDiv = document.getElementById('result');
-  const hitBtn = document.getElementById('hit');
-  const standBtn = document.getElementById('stand');
-  const restartBtn = document.getElementById('restart');
-  const placeBetBtn = document.getElementById('place-bet');
-  const betInput = document.getElementById('bet');
-  const gameArea = document.getElementById('game-area');
-  const chipAnim = document.getElementById('chip-animation');
+  const depositSec   = document.getElementById('deposit-section');
+  const betSetup     = document.getElementById('bet-setup');
+  const betsSec      = document.getElementById('bets-section');
+  const handsBetsDiv = document.getElementById('hands-bets');
+  const gameArea     = document.getElementById('game-area');
+  const handsArea    = document.getElementById('hands-area');
+  const speech       = document.getElementById('dealer-speech');
+  const extras       = document.getElementById('extras');
+  const insuranceBtn = document.getElementById('insurance-btn');
+  const splitBtn     = document.getElementById('split-btn');
+  const doubleBtn    = document.getElementById('double-btn');
 
-  function buildDeck() {
-    deck = [];
-    for (let suit of suits) {
-      for (let value of values) {
-        deck.push({ suit, value });
-      }
-    }
-    for (let i = deck.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [deck[i], deck[j]] = [deck[j], deck[i]];
-    }
-  }
+  // 1️⃣ Deposit
+  document.getElementById('deposit-btn').onclick = () => {
+    const amt = parseInt(document.getElementById('deposit-input').value);
+    if (!amt || amt <= 0) return alert('Enter a valid deposit');
+    bankroll = amt;
+    speak(`Bankroll set to $${bankroll}`);
+    depositSec.classList.add('hidden');
+    betSetup.classList.remove('hidden');
+  };
 
-  function dealCard(hidden = false) {
-    const card = deck.pop();
-    const div = document.createElement('div');
-    div.className = 'card';
-    if (card.suit === '♥' || card.suit === '♦') div.classList.add('red');
-    if (hidden) div.classList.add('back');
-    div.innerHTML = hidden ? '' : `<div>${card.value}</div><div>${card.suit}</div>`;
-    return { card, div };
-  }
+  // 2️⃣ Set Number of Hands
+  document.getElementById('set-hands-btn').onclick = () => {
+    numHands = parseInt(document.getElementById('num-hands').value) || 1;
+    speak(`You have ${numHands} hand${numHands>1?'s':''}. Place your bets.`);
+    betSetup.classList.add('hidden');
+    betsSec.classList.remove('hidden');
+    renderBets();
+  };
 
-  function getCardValue(value) {
-    if (value === 'A') return 11;
-    if (['K', 'Q', 'J'].includes(value)) return 10;
-    return parseInt(value);
-  }
-
-  function calculateScore(hand) {
-    let score = 0, aces = 0;
-    for (let c of hand) {
-      score += getCardValue(c.value);
-      if (c.value === 'A') aces++;
-    }
-    while (score > 21 && aces) {
-      score -= 10;
-      aces--;
-    }
-    return score;
-  }
-
-  function updateScores(revealDealer = false) {
-    playerScoreSpan.textContent = calculateScore(playerHand);
-    if (revealDealer) {
-      dealerScoreSpan.textContent = calculateScore(dealerHand);
-      [...dealerCardsDiv.children].forEach((el, i) => el.classList.remove('back'));
-      [...dealerCardsDiv.children].forEach((el, i) => {
-        el.innerHTML = `<div>${dealerHand[i].value}</div><div>${dealerHand[i].suit}</div>`;
+  // Render bet inputs & chips for each hand
+  function renderBets() {
+    handsBetsDiv.innerHTML = '';
+    hands = [];
+    const perHandMax = Math.floor(bankroll / numHands);
+    for (let i=0; i<numHands; i++){
+      const wrapper = document.createElement('div');
+      wrapper.className = 'hand-bet';
+      wrapper.innerHTML = `
+        <label>Hand ${i+1} Bet (max ${perHandMax}):</label>
+        <input type="number" min="1" max="${perHandMax}" value="${perHandMax}" id="bet-${i}" />
+        <div class="chips">
+          $<button data-val="1">1</button>
+          $<button data-val="5">5</button>
+          $<button data-val="25">25</button>
+          $<button data-val="100">100</button>
+        </div>
+      `;
+      // chip clicks
+      wrapper.querySelectorAll('.chips button').forEach(btn=>{
+        btn.onclick = ()=>{
+          let inp = wrapper.querySelector('input');
+          inp.value = Math.min(perHandMax, parseInt(inp.value) + parseInt(btn.dataset.val));
+        };
       });
+      handsBetsDiv.appendChild(wrapper);
+      hands.push({ bet: perHandMax, cards: [], state: 'betting' });
     }
+    // Start game
+    document.getElementById('start-game-btn').onclick = startGame;
   }
 
-  function endGame(msg) {
-    hitBtn.disabled = standBtn.disabled = true;
-    resultDiv.textContent = msg;
-    resultDiv.classList.remove('win', 'lose', 'push');
-    if (msg.includes('win')) resultDiv.classList.add('win');
-    else if (msg.includes('Dealer wins')) resultDiv.classList.add('lose');
-    else resultDiv.classList.add('push');
-    updateScores(true);
-    restartBtn.disabled = false;
-  }
-
-  placeBetBtn.onclick = () => {
-    currentBet = parseInt(betInput.value);
-    if (currentBet > bankroll || currentBet <= 0) return alert('Invalid bet amount.');
-
-    bankroll -= currentBet;
-    bankrollSpan.textContent = bankroll;
-
-    buildDeck();
-    playerHand = [];
-    dealerHand = [];
-    dealerCardsDiv.innerHTML = '';
-    playerCardsDiv.innerHTML = '';
-    resultDiv.textContent = '';
-    resultDiv.className = '';
-    chipAnim.classList.remove('hidden');
-    setTimeout(() => chipAnim.classList.add('hidden'), 1200);
-
-    const card1 = dealCard();
-    const card2 = dealCard();
-    playerHand.push(card1.card, card2.card);
-    playerCardsDiv.append(card1.div, card2.div);
-
-    const dealerCard1 = dealCard();
-    const dealerCard2 = dealCard(true);
-    dealerHand.push(dealerCard1.card, dealerCard2.card);
-    dealerCardsDiv.append(dealerCard1.div, dealerCard2.div);
-
+  // 3️⃣ Start Game (deal initial cards)
+  function startGame(){
+    // read bets
+    let total = 0;
+    hands.forEach((h,i)=>{
+      h.bet = parseInt(document.getElementById(`bet-${i}`).value) || 0;
+      total += h.bet;
+    });
+    if (total > bankroll) return alert('You cannot bet more than your bankroll');
+    bankroll -= total;
+    renderBankroll();
+    betsSec.classList.add('hidden');
     gameArea.classList.remove('hidden');
-    updateScores();
-
-    hitBtn.disabled = false;
-    standBtn.disabled = false;
-    restartBtn.disabled = true;
+    renderHands();
+    speak('Hit or Stand?');
+    // show extras if upcard Ace
+    // extras.classList.remove('hidden'); // you can conditionally show
   }
 
-  hitBtn.onclick = () => {
-    const newCard = dealCard();
-    playerHand.push(newCard.card);
-    playerCardsDiv.appendChild(newCard.div);
-    updateScores();
-    if (calculateScore(playerHand) > 21) {
-      endGame('You busted! Dealer wins.');
-    }
+  function renderBankroll(){
+    document.getElementById('bankroll').textContent = bankroll;
   }
 
-  standBtn.onclick = () => {
-    while (calculateScore(dealerHand) < 17) {
-      const next = dealCard();
-      dealerHand.push(next.card);
-      dealerCardsDiv.appendChild(next.div);
-    }
-
-    const playerScore = calculateScore(playerHand);
-    const dealerScore = calculateScore(dealerHand);
-    let msg = '';
-    if (dealerScore > 21 || playerScore > dealerScore) {
-      bankroll += currentBet * 2;
-      msg = 'You win!';
-    } else if (playerScore < dealerScore) {
-      msg = 'Dealer wins!';
-    } else {
-      bankroll += currentBet;
-      msg = 'Push (tie).';
-    }
-    bankrollSpan.textContent = bankroll;
-    endGame(msg);
+  // Setup each hand area
+  function renderHands(){
+    handsArea.innerHTML = '';
+    hands.forEach((h,i)=>{
+      const div = document.createElement('div');
+      div.className = 'hand';
+      div.id = `hand-area-${i}`;
+      div.innerHTML = `<h3>Hand ${i+1}</h3>
+                       <div class="cards" id="cards-${i}"></div>
+                       <div class="score" id="score-${i}">Score: 0</div>
+                       <div class="controls">
+                         <button onclick="hit(${i})">Hit</button>
+                         <button onclick="stand(${i})">Stand</button>
+                       </div>`;
+      handsArea.appendChild(div);
+      // TODO: deal initial cards per hand
+    });
   }
 
-  restartBtn.onclick = () => {
-    gameArea.classList.add('hidden');
-    resultDiv.textContent = '';
-    resultDiv.className = '';
-    hitBtn.disabled = standBtn.disabled = true;
-    restartBtn.disabled = false;
+  // Sample speak function
+  function speak(text, ms=2000){
+    speech.textContent = text;
+    speech.classList.remove('hidden');
+    setTimeout(()=> speech.classList.add('hidden'), ms);
   }
+
+  // TODO: implement hit/stand per hand, insurance, split, double
+  window.hit = function(handIdx){
+    speak(`You hit hand ${handIdx+1}`);
+    // deal card + update UI...
+  };
+  window.stand = function(handIdx){
+    speak(`You stand hand ${handIdx+1}`);
+    // reveal dealer or next hand...
+  };
 };
