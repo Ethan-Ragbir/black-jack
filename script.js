@@ -15,6 +15,7 @@ window.onload = function () {
   const placeBetBtn = document.getElementById('place-bet');
   const betInput = document.getElementById('bet');
   const gameArea = document.getElementById('game-area');
+  const chipAnim = document.getElementById('chip-animation');
 
   function buildDeck() {
     deck = [];
@@ -72,6 +73,10 @@ window.onload = function () {
   function endGame(msg) {
     hitBtn.disabled = standBtn.disabled = true;
     resultDiv.textContent = msg;
+    resultDiv.classList.remove('win', 'lose', 'push');
+    if (msg.includes('win')) resultDiv.classList.add('win');
+    else if (msg.includes('Dealer wins')) resultDiv.classList.add('lose');
+    else resultDiv.classList.add('push');
     updateScores(true);
     restartBtn.disabled = false;
   }
@@ -89,6 +94,9 @@ window.onload = function () {
     dealerCardsDiv.innerHTML = '';
     playerCardsDiv.innerHTML = '';
     resultDiv.textContent = '';
+    resultDiv.className = '';
+    chipAnim.classList.remove('hidden');
+    setTimeout(() => chipAnim.classList.add('hidden'), 1200);
 
     const card1 = dealCard();
     const card2 = dealCard();
@@ -133,19 +141,19 @@ window.onload = function () {
       msg = 'You win!';
     } else if (playerScore < dealerScore) {
       msg = 'Dealer wins!';
-        } else {
+    } else {
       bankroll += currentBet;
       msg = 'Push (tie).';
     }
-
     bankrollSpan.textContent = bankroll;
     endGame(msg);
-  };
+  }
 
   restartBtn.onclick = () => {
     gameArea.classList.add('hidden');
     resultDiv.textContent = '';
+    resultDiv.className = '';
     hitBtn.disabled = standBtn.disabled = true;
     restartBtn.disabled = false;
-  };
-}; 
+  }
+};
