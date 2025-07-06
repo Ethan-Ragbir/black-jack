@@ -1,104 +1,105 @@
-const deck = [];
-const suits = ['♠', '♥', '♦', '♣'];
-const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
-
-let playerHand = [];
-let dealerHand = [];
-
-const playerHandDiv = document.getElementById('player-hand');
-const dealerHandDiv = document.getElementById('dealer-hand');
-const resultDiv = document.getElementById('result');
-const playerScoreSpan = document.getElementById('player-score');
-const dealerScoreSpan = document.getElementById('dealer-score');
-
-function createDeck() {
-  deck.length = 0;
-  for (let suit of suits) {
-    for (let value of values) {
-      deck.push({ suit, value });
-    }
-  }
-  shuffle(deck);
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #116530;
+  color: white;
+  text-align: center;
 }
 
-function shuffle(deck) {
-  for (let i = deck.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [deck[i], deck[j]] = [deck[j], deck[i]];
-  }
+.casino {
+  max-width: 800px;
+  margin: auto;
+  padding: 20px;
 }
 
-function getCardValue(card) {
-  if (['J', 'Q', 'K'].includes(card.value)) return 10;
-  if (card.value === 'A') return 11;
-  return parseInt(card.value);
+h1 {
+  margin-bottom: 10px;
 }
 
-function calculateScore(hand) {
-  let score = 0;
-  let aces = 0;
-  for (let card of hand) {
-    score += getCardValue(card);
-    if (card.value === 'A') aces++;
-  }
-  while (score > 21 && aces > 0) {
-    score -= 10;
-    aces--;
-  }
-  return score;
+.bankroll {
+  font-size: 1.2em;
+  margin-bottom: 20px;
 }
 
-function displayHands() {
-  playerHandDiv.innerHTML = playerHand.map(card => `${card.value}${card.suit}`).join(' ');
-  dealerHandDiv.innerHTML = dealerHand.map(card => `${card.value}${card.suit}`).join(' ');
-  playerScoreSpan.textContent = calculateScore(playerHand);
-  dealerScoreSpan.textContent = calculateScore(dealerHand);
+.bet-area {
+  margin-bottom: 20px;
 }
 
-function dealInitial() {
-  playerHand = [deck.pop(), deck.pop()];
-  dealerHand = [deck.pop(), deck.pop()];
-  displayHands();
-  checkWin();
+.bet-area input {
+  width: 80px;
+  font-size: 1em;
+  padding: 5px;
+  text-align: center;
 }
 
-function hitPlayer() {
-  playerHand.push(deck.pop());
-  displayHands();
-  checkWin();
+.hand {
+  margin: 20px;
 }
 
-function stand() {
-  while (calculateScore(dealerHand) < 17) {
-    dealerHand.push(deck.pop());
-  }
-  displayHands();
-  checkWin(true);
+.cards {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
-function checkWin(stand = false) {
-  const playerScore = calculateScore(playerHand);
-  const dealerScore = calculateScore(dealerHand);
-  if (playerScore > 21) {
-    resultDiv.textContent = 'You bust! Dealer wins.';
-  } else if (stand) {
-    if (dealerScore > 21 || playerScore > dealerScore) {
-      resultDiv.textContent = 'You win!';
-    } else if (playerScore < dealerScore) {
-      resultDiv.textContent = 'Dealer wins.';
-    } else {
-      resultDiv.textContent = 'Push (tie).';
-    }
-  }
+.card {
+  width: 60px;
+  height: 90px;
+  background: white;
+  color: black;
+  border-radius: 5px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  font-weight: bold;
+  position: relative;
 }
 
-document.getElementById('hit').addEventListener('click', hitPlayer);
-document.getElementById('stand').addEventListener('click', stand);
-document.getElementById('restart').addEventListener('click', () => {
-  resultDiv.textContent = '';
-  createDeck();
-  dealInitial();
-});
+.card.red {
+  color: red;
+}
 
-createDeck();
-dealInitial();
+.card.back {
+  background: repeating-linear-gradient(45deg, #444 0, #444 5px, #222 5px, #222 10px);
+  color: transparent;
+  pointer-events: none;
+}
+
+.score {
+  margin-top: 10px;
+  font-size: 1.1em;
+}
+
+.controls {
+  margin: 20px;
+}
+
+button {
+  padding: 10px 20px;
+  font-size: 1em;
+  margin: 5px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  background-color: #f1c40f;
+  color: #222;
+  transition: 0.2s ease-in-out;
+}
+
+button:hover {
+  background-color: #f39c12;
+}
+
+.hidden {
+  display: none;
+}
+
+#result {
+  font-size: 1.5em;
+  margin-top: 20px;
+  font-weight: bold;
+}
