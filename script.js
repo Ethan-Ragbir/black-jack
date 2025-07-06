@@ -133,6 +133,19 @@ window.onload = function () {
       msg = 'You win!';
     } else if (playerScore < dealerScore) {
       msg = 'Dealer wins!';
-    } else {
-      bankroll += curre
-    };
+        } else {
+      bankroll += currentBet;
+      msg = 'Push (tie).';
+    }
+
+    bankrollSpan.textContent = bankroll;
+    endGame(msg);
+  };
+
+  restartBtn.onclick = () => {
+    gameArea.classList.add('hidden');
+    resultDiv.textContent = '';
+    hitBtn.disabled = standBtn.disabled = true;
+    restartBtn.disabled = false;
+  };
+}; 
