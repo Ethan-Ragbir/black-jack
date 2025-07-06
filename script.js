@@ -135,3 +135,4 @@ window.onload = function () {
       msg = 'Dealer wins!';
     } else {
       bankroll += curre
+    };
