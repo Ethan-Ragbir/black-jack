@@ -2,50 +2,58 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Blackjack Pro</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
   <div class="casino">
-    <h1>Blackjack Pro</h1>
-    <div class="bankroll">Bankroll: $<span id="bankroll">1000</span></div>
 
-    <div class="bet-area">
-      <label for="bet">Bet amount: </label>
-      <input type="number" id="bet" min="1" max="1000" value="100" />
-      <button id="place-bet">Place Bet</button>
-    </div>
+    <!-- 1️⃣ DEPOSIT PHASE -->
+    <section id="deposit-section">
+      <h2>Welcome to Blackjack Pro</h2>
+      <label for="deposit-input">Enter deposit amount:</label>
+      <input type="number" id="deposit-input" min="1" value="100" />
+      <button id="deposit-btn">Deposit</button>
+    </section>
 
-    <div class="dealer-section">
-      <img id="dealer-avatar" src="https://i.imgur.com/VYH4zHe.png" alt="Dealer" />
-      <p class="dealer-name">Dealer</p>
-    </div>
+    <!-- 2️⃣ SET UP HANDS & BETS -->
+    <section id="bet-setup" class="hidden">
+      <label for="num-hands">Number of hands:</label>
+      <input type="number" id="num-hands" min="1" max="5" value="1" />
+      <button id="set-hands-btn">Set Hands</button>
+    </section>
 
-    <div id="game-area" class="hidden">
-      <div class="hands">
-        <div class="hand" id="dealer-hand">
-          <h2>Dealer's Hand</h2>
-          <div class="cards" id="dealer-cards"></div>
-          <div class="score">Score: <span id="dealer-score">?</span></div>
-        </div>
+    <!-- 3️⃣ BETTING AREA (one per hand) -->
+    <section id="bets-section" class="hidden">
+      <h3>Select Bets</h3>
+      <div id="hands-bets"></div>
+      <button id="start-game-btn">Start Game</button>
+    </section>
 
-        <div class="hand" id="player-hand">
-          <h2>Your Hand</h2>
-          <div class="cards" id="player-cards"></div>
-          <div class="score">Score: <span id="player-score">0</span></div>
-        </div>
+    <!-- SPEECH BUBBLE -->
+    <div id="dealer-speech" class="speech hidden"></div>
+
+    <!-- 4️⃣ GAME AREA -->
+    <section id="game-area" class="hidden">
+      <div class="dealer-section">
+        <img id="dealer-avatar"
+             src="https://raw.githubusercontent.com/Ethan-Ragbir/black-jack/main/dealer-avatar.png"
+             alt="Dealer" />
+        <p class="dealer-name">Dealer</p>
       </div>
 
-      <div class="controls">
-        <button id="hit" disabled>Hit</button>
-        <button id="stand" disabled>Stand</button>
-        <button id="restart">Restart</button>
-      </div>
+      <!-- Hands -->
+      <div id="hands-area"></div>
 
-      <div id="result"></div>
-      <div id="chip-animation" class="hidden">💰</div>
-    </div>
+      <!-- INSURANCE / SPLIT / DOUBLE stubs -->
+      <div id="extras" class="hidden">
+        <button id="insurance-btn">Insurance</button>
+        <button id="split-btn">Split</button>
+        <button id="double-btn">Double Down</button>
+      </div>
+    </section>
+
   </div>
 
   <script src="script.js"></script>
