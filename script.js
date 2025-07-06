@@ -1,105 +1,137 @@
-body {
-  margin: 0;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: #116530;
-  color: white;
-  text-align: center;
-}
+window.onload = function () {
+  const suits = ['♠', '♥', '♦', '♣'];
+  const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+  let deck = [], playerHand = [], dealerHand = [], bankroll = 1000, currentBet = 0;
 
-.casino {
-  max-width: 800px;
-  margin: auto;
-  padding: 20px;
-}
+  const dealerCardsDiv = document.getElementById('dealer-cards');
+  const playerCardsDiv = document.getElementById('player-cards');
+  const dealerScoreSpan = document.getElementById('dealer-score');
+  const playerScoreSpan = document.getElementById('player-score');
+  const bankrollSpan = document.getElementById('bankroll');
+  const resultDiv = document.getElementById('result');
+  const hitBtn = document.getElementById('hit');
+  const standBtn = document.getElementById('stand');
+  const restartBtn = document.getElementById('restart');
+  const placeBetBtn = document.getElementById('place-bet');
+  const betInput = document.getElementById('bet');
+  const gameArea = document.getElementById('game-area');
 
-h1 {
-  margin-bottom: 10px;
-}
+  function buildDeck() {
+    deck = [];
+    for (let suit of suits) {
+      for (let value of values) {
+        deck.push({ suit, value });
+      }
+    }
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+  }
 
-.bankroll {
-  font-size: 1.2em;
-  margin-bottom: 20px;
-}
+  function dealCard(hidden = false) {
+    const card = deck.pop();
+    const div = document.createElement('div');
+    div.className = 'card';
+    if (card.suit === '♥' || card.suit === '♦') div.classList.add('red');
+    if (hidden) div.classList.add('back');
+    div.innerHTML = hidden ? '' : `<div>${card.value}</div><div>${card.suit}</div>`;
+    return { card, div };
+  }
 
-.bet-area {
-  margin-bottom: 20px;
-}
+  function getCardValue(value) {
+    if (value === 'A') return 11;
+    if (['K', 'Q', 'J'].includes(value)) return 10;
+    return parseInt(value);
+  }
 
-.bet-area input {
-  width: 80px;
-  font-size: 1em;
-  padding: 5px;
-  text-align: center;
-}
+  function calculateScore(hand) {
+    let score = 0, aces = 0;
+    for (let c of hand) {
+      score += getCardValue(c.value);
+      if (c.value === 'A') aces++;
+    }
+    while (score > 21 && aces) {
+      score -= 10;
+      aces--;
+    }
+    return score;
+  }
 
-.hand {
-  margin: 20px;
-}
+  function updateScores(revealDealer = false) {
+    playerScoreSpan.textContent = calculateScore(playerHand);
+    if (revealDealer) {
+      dealerScoreSpan.textContent = calculateScore(dealerHand);
+      [...dealerCardsDiv.children].forEach((el, i) => el.classList.remove('back'));
+      [...dealerCardsDiv.children].forEach((el, i) => {
+        el.innerHTML = `<div>${dealerHand[i].value}</div><div>${dealerHand[i].suit}</div>`;
+      });
+    }
+  }
 
-.cards {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
+  function endGame(msg) {
+    hitBtn.disabled = standBtn.disabled = true;
+    resultDiv.textContent = msg;
+    updateScores(true);
+    restartBtn.disabled = false;
+  }
 
-.card {
-  width: 60px;
-  height: 90px;
-  background: white;
-  color: black;
-  border-radius: 5px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
-  padding: 5px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-  font-weight: bold;
-  position: relative;
-}
+  placeBetBtn.onclick = () => {
+    currentBet = parseInt(betInput.value);
+    if (currentBet > bankroll || currentBet <= 0) return alert('Invalid bet amount.');
 
-.card.red {
-  color: red;
-}
+    bankroll -= currentBet;
+    bankrollSpan.textContent = bankroll;
 
-.card.back {
-  background: repeating-linear-gradient(45deg, #444 0, #444 5px, #222 5px, #222 10px);
-  color: transparent;
-  pointer-events: none;
-}
+    buildDeck();
+    playerHand = [];
+    dealerHand = [];
+    dealerCardsDiv.innerHTML = '';
+    playerCardsDiv.innerHTML = '';
+    resultDiv.textContent = '';
 
-.score {
-  margin-top: 10px;
-  font-size: 1.1em;
-}
+    const card1 = dealCard();
+    const card2 = dealCard();
+    playerHand.push(card1.card, card2.card);
+    playerCardsDiv.append(card1.div, card2.div);
 
-.controls {
-  margin: 20px;
-}
+    const dealerCard1 = dealCard();
+    const dealerCard2 = dealCard(true);
+    dealerHand.push(dealerCard1.card, dealerCard2.card);
+    dealerCardsDiv.append(dealerCard1.div, dealerCard2.div);
 
-button {
-  padding: 10px 20px;
-  font-size: 1em;
-  margin: 5px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  background-color: #f1c40f;
-  color: #222;
-  transition: 0.2s ease-in-out;
-}
+    gameArea.classList.remove('hidden');
+    updateScores();
 
-button:hover {
-  background-color: #f39c12;
-}
+    hitBtn.disabled = false;
+    standBtn.disabled = false;
+    restartBtn.disabled = true;
+  }
 
-.hidden {
-  display: none;
-}
+  hitBtn.onclick = () => {
+    const newCard = dealCard();
+    playerHand.push(newCard.card);
+    playerCardsDiv.appendChild(newCard.div);
+    updateScores();
+    if (calculateScore(playerHand) > 21) {
+      endGame('You busted! Dealer wins.');
+    }
+  }
 
-#result {
-  font-size: 1.5em;
-  margin-top: 20px;
-  font-weight: bold;
-}
+  standBtn.onclick = () => {
+    while (calculateScore(dealerHand) < 17) {
+      const next = dealCard();
+      dealerHand.push(next.card);
+      dealerCardsDiv.appendChild(next.div);
+    }
+
+    const playerScore = calculateScore(playerHand);
+    const dealerScore = calculateScore(dealerHand);
+    let msg = '';
+    if (dealerScore > 21 || playerScore > dealerScore) {
+      bankroll += currentBet * 2;
+      msg = 'You win!';
+    } else if (playerScore < dealerScore) {
+      msg = 'Dealer wins!';
+    } else {
+      bankroll += curre
