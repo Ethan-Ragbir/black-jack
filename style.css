@@ -1,15 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
 
 :root {
-  --bg-light: #f5f5f5;
   --table-dark: #0e2a17;
   --table-light: #1f593e;
   --highlight: #f1c40f;
-  --highlight-dark: #f39c12;
-  --text-light: #fafafa;
-  --card-white: #ffffff;
-  --card-shadow: rgba(0,0,0,0.25);
   --btn-hover: #e0b90f;
+  --text-light: #fafafa;
 }
 
 * {
@@ -19,259 +15,121 @@
 }
 
 body {
-  font-family: 'Poppins', sans-serif;
   background: radial-gradient(circle at center, var(--table-light), var(--table-dark));
   color: var(--text-light);
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  padding: 40px 20px;
+  font-family: 'Poppins', sans-serif;
+  overflow: hidden;
+  height: 100vh;
 }
 
-.casino {
-  width: 100%;
-  max-width: 1000px;
-  background: rgba(0, 0, 0, 0.6);
-  padding: 30px 40px;
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
-}
-
-h1 {
-  font-size: 2.75rem;
-  font-weight: 700;
-  color: var(--highlight);
-  text-align: center;
-  margin-bottom: 20px;
-  text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.8);
-}
-
-/* Sections */
-section {
-  margin-bottom: 30px;
-}
-
-input[type="number"] {
-  padding: 8px 12px;
-  font-size: 1rem;
-  border: none;
-  border-radius: 6px;
-  width: 120px;
-  text-align: center;
-}
-
-button {
-  padding: 10px 20px;
-  margin-left: 10px;
-  font-size: 1rem;
-  font-weight: 600;
-  border: none;
-  border-radius: 8px;
-  background-color: var(--highlight);
-  color: #222;
-  cursor: pointer;
-  transition: background-color 0.2s, transform 0.1s;
-}
-
-button:hover {
-  background-color: var(--btn-hover);
-  transform: translateY(-2px);
-}
-
-/* Deposit & Hand Setup */
-#deposit-section,
-#bet-setup,
-#bets-section {
-  background: rgba(255, 255, 255, 0.1);
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
-  text-align: center;
-}
-
-#bets-section h3 {
-  margin-bottom: 15px;
-}
-
-/* Betting Hands UI */
-#hands-bets {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.hand-bet {
-  background: rgba(0,0,0,0.4);
-  padding: 15px;
-  border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-}
-
-.hand-bet label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 600;
-}
-
-.hand-bet .chips {
-  margin-top: 10px;
-}
-
-.hand-bet .chips button {
-  width: 36px;
-  height: 36px;
-  margin: 0 4px;
-  border-radius: 50%;
-  font-weight: bold;
-  background: var(--table-light);
-  color: var(--text-light);
-  line-height: 36px;
-}
-
-/* Speech Bubble */
-.speech {
+.table-container {
   position: relative;
-  display: inline-block;
-  margin: 0 auto 20px;
-  padding: 12px 20px;
-  background: var(--text-light);
-  color: #222;
-  border-radius: 20px;
-  font-weight: 600;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  width: 100%;
+  height: 100%;
+  perspective: 1200px;
 }
 
-.speech::after {
-  content: '';
+/* Dealer area */
+.dealer-area {
   position: absolute;
-  bottom: -12px;
+  top: 5%;
   left: 50%;
   transform: translateX(-50%);
-  border-width: 12px 12px 0;
-  border-style: solid;
-  border-color: var(--text-light) transparent;
-}
-
-/* Game Area */
-#game-area {
-  background: rgba(255,255,255,0.05);
-  padding: 30px;
-  border-radius: 16px;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.6);
-}
-
-.dealer-section {
-  margin-bottom: 20px;
   text-align: center;
 }
-
 #dealer-avatar {
   width: 120px;
   height: 120px;
   border-radius: 50%;
   border: 4px solid var(--highlight);
-  box-shadow: 0 0 12px rgba(0,0,0,0.7);
+  box-shadow: 0 0 16px rgba(0,0,0,0.7);
 }
-
-.dealer-name {
-  margin-top: 8px;
-  font-size: 1.25rem;
+.speech {
+  margin-top: 12px;
+  padding: 8px 16px;
+  background: #fafafa;
+  color: #222;
+  border-radius: 20px;
   font-weight: 600;
+  display: inline-block;
+}
+.speech.hidden { display: none; }
+
+/* Card container */
+#card-container {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
-/* Hands Layout */
-#hands-area {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 24px;
-}
-
-.hand {
-  background: rgba(0,0,0,0.3);
-  padding: 20px;
-  border-radius: 12px;
-  width: 220px;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.5);
-}
-
-.hand h3 {
-  font-size: 1.2rem;
-  margin-bottom: 12px;
-}
-
-.hand .cards {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-}
-
+/* Card styling */
 .card {
-  width: 60px;
-  height: 90px;
-  background: var(--card-white);
-  color: var(--card-black);
+  position: absolute;
+  width: 80px;
+  height: 120px;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
   border-radius: 8px;
-  box-shadow: 0 2px 8px var(--card-shadow);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+.card .face {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  color: #000;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   align-items: center;
-  padding: 6px;
-  font-size: 1rem;
-  position: relative;
-  overflow: hidden;
-  transition: transform 0.3s, box-shadow 0.3s;
+  padding: 8px;
+  box-sizing: border-box;
+  font-weight: bold;
+}
+.card .back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(45deg, #444 0, #444 6px, #222 6px, #222 12px);
+  transform: rotateY(180deg);
+  backface-visibility: hidden;
 }
 
-.card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 6px 16px var(--card-shadow);
+/* Flip animation */
+.card.flip {
+  animation: flipCard 0.6s forwards;
+}
+@keyframes flipCard {
+  from { transform: rotateY(0deg); }
+  to   { transform: rotateY(180deg); }
 }
 
-.card.red { color: red; }
-
-.card.back {
-  background: repeating-linear-gradient(
-    45deg,
-    #555 0, #555 5px,
-    #333 5px, #333 10px
-  );
-  pointer-events: none;
-}
-
-/* Hand Controls */
-.hand .controls {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-}
-
-.hand .controls button {
-  flex: 1;
-}
-
-/* Extras (Insurance/Split/Double) */
-#extras {
-  margin-top: 20px;
+/* Player area */
+.player-area {
+  position: absolute;
+  bottom: 5%;
+  left: 50%;
+  transform: translateX(-50%);
   text-align: center;
 }
-
-#extras button {
+#chip-stack {
+  margin-bottom: 16px;
+}
+.controls button {
+  padding: 12px 24px;
   margin: 0 8px;
+  background: var(--highlight);
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  transition: background-color 0.2s, transform 0.1s;
 }
-
-/* Result Text */
-#result {
-  font-size: 1.5rem;
-  margin-top: 20px;
-  font-weight: 700;
-  text-transform: uppercase;
+.controls button:hover {
+  background: var(--btn-hover);
 }
-
-#result.win { color: #4caf50; }
-#result.lose { color: #e74c3c; }
-#result.push { color: #f1c40f; }
+.controls button:active {
+  transform: translateY(2px);
+}
