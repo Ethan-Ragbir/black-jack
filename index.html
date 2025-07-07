@@ -2,64 +2,36 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Blackjack Pro</title>
-  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-  <div class="casino">
+  <div class="table-container">
 
-    <!-- 1️⃣ DEPOSIT PHASE -->
-    <section id="deposit-section">
-      <h2>Welcome to Blackjack Pro</h2>
-      <label for="deposit-input">Enter deposit amount:</label>
-      <input type="number" id="deposit-input" min="1" value="100" />
-      <button id="deposit-btn">Deposit</button>
-    </section>
+    <!-- Dealer POV -->
+    <div class="dealer-area">
+      <img id="dealer-avatar"
+           src="https://raw.githubusercontent.com/Ethan-Ragbir/black-jack/main/dealer-avatar.png"
+           alt="Dealer" />
+      <div id="dealer-speech" class="speech hidden"></div>
+    </div>
 
-    <!-- 2️⃣ SET UP HANDS & BETS -->
-    <section id="bet-setup" class="hidden">
-      <label for="num-hands">Number of hands:</label>
-      <input type="number" id="num-hands" min="1" max="5" value="1" />
-      <button id="set-hands-btn">Set Hands</button>
-    </section>
+    <!-- Cards Canvas -->
+    <div id="card-container"></div>
 
-    <!-- 3️⃣ BETTING AREA (one per hand) -->
-    <section id="bets-section" class="hidden">
-      <h3>Select Bets</h3>
-      <div id="hands-bets"></div>
-      <button id="start-game-btn">Start Game</button>
-    </section>
-
-    <!-- SPEECH BUBBLE -->
-    <div id="dealer-speech" class="speech hidden"></div>
-
-    <!-- 4️⃣ GAME AREA -->
-    <section id="game-area" class="hidden">
-      <div class="dealer-section">
-        <img id="dealer-avatar"
-             src="https://raw.githubusercontent.com/Ethan-Ragbir/black-jack/main/dealer-avatar.png"
-             alt="Dealer" />
-        <p class="dealer-name">Dealer</p>
+    <!-- Player POV -->
+    <div class="player-area">
+      <div id="chip-stack"></div>
+      <div class="controls">
+        <button id="hit">Hit</button>
+        <button id="stand">Stand</button>
+        <button id="restart">Restart</button>
       </div>
-
-      <!-- Hands -->
-      <div id="hands-area"></div>
-
-      <!-- INSURANCE / SPLIT / DOUBLE stubs -->
-      <div id="extras" class="hidden">
-        <button id="insurance-btn">Insurance</button>
-        <button id="split-btn">Split</button>
-        <button id="double-btn">Double Down</button>
-      </div>
-    </section>
+    </div>
 
   </div>
-
-  <!-- Inline test: confirm deposit button exists -->
-  <script>
-    console.log('INLINE TEST – deposit-btn →', document.getElementById('deposit-btn'));
-  </script>
 
   <script src="script.js"></script>
 </body>
