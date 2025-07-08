@@ -58,6 +58,10 @@
       backdrop-filter: blur(10px);
     }
     
+    .welcome-screen.hidden, .deposit-screen.hidden {
+      display: none !important;
+    }
+    
     .welcome-card, .deposit-card {
       background: linear-gradient(135deg, var(--table-light), var(--table-accent));
       padding: 60px;
@@ -163,7 +167,7 @@
     }
     
     .game-table.hidden {
-      display: none;
+      display: none !important;
     }
     
     /* Header */
@@ -276,7 +280,7 @@
     }
     
     .dealer-speech.hidden {
-      display: none;
+      display: none !important;
     }
     
     .dealer-total {
@@ -607,7 +611,7 @@
     }
     
     .insurance-modal.hidden {
-      display: none;
+      display: none !important;
     }
     
     .insurance-content {
@@ -653,7 +657,7 @@
     }
     
     .result-modal.hidden {
-      display: none;
+      display: none !important;
     }
     
     .result-content {
@@ -840,6 +844,7 @@
       </div>
       
       <button class="btn-primary" onclick="game.processDeposit()">Confirm Deposit</button>
+      <button class="btn-primary" onclick="game.forceGameStart()" style="margin-top: 10px; background: #dc3545;">Force Start Game (Debug)</button>
     </div>
   </div>
 
@@ -1186,22 +1191,54 @@
       }
       
       processDeposit() {
-        const customAmount = document.getElementById('custom-amount').value;
-        const amount = parseInt(customAmount);
+        const customAmountInput = document.getElementById('custom-amount');
+        let amount = parseInt(customAmountInput.value);
+        
+        // If no custom amount, check for selected preset
+        if (!amount || isNaN(amount)) {
+          const selectedBtn = document.querySelector('.deposit-btn.selected');
+          if (selectedBtn) {
+            amount = parseInt(selectedBtn.dataset.amount);
+          }
+        }
+        
+        console.log('Deposit amount:', amount); // Debug log
         
         if (amount && amount >= 100 && amount <= 100000) {
           this.balance = amount;
-          this.showGameTable();
-          this.speak(this.getRandomQuote('welcome'));
+          console.log('Balance updated to:', this.balance); // Debug log
+          
+          // Force transition with timeout to ensure it works
+          setTimeout(() => {
+            this.showGameTable();
+            console.log('Game table should be visible now');
+          }, 100);
+          
+          setTimeout(() => {
+            this.speak(this.getRandomQuote('welcome'));
+          }, 1000);
         } else {
-          alert('Please enter a valid amount between $100 and $100,000');
+          alert('Please select a deposit amount or enter a valid amount between $100 and $100,000');
         }
       }
       
+      forceGameStart() {
+        console.log('Force starting game...');
+        if (!this.balance) {
+          this.balance = 1000; // Default balance
+        }
+        this.showGameTable();
+        setTimeout(() => {
+          this.speak(this.getRandomQuote('welcome'));
+        }, 500);
+      }
+      
       showGameTable() {
+        console.log('Showing game table...'); // Debug log
         document.getElementById('welcome-screen').classList.add('hidden');
         document.getElementById('deposit-screen').classList.add('hidden');
         document.getElementById('game-table').classList.remove('hidden');
+        console.log('Balance set to:', this.balance); // Debug log
         this.updateDisplay();
       }
       
