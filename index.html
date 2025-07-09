@@ -582,8 +582,20 @@
   </style>
 </head>
 <body>
+  <!-- Welcome Screen -->
+  <div id="welcome-screen" class="welcome-screen">
+    <div class="welcome-card">
+      <h1 class="welcome-title">🎰 Welcome to Elite Blackjack</h1>
+      <div class="input-group">
+        <label for="player-name">Enter Your Name:</label>
+        <input type="text" id="player-name" placeholder="Your name" maxlength="15">
+      </div>
+      <button class="btn" id="name-continue-btn">Continue</button>
+    </div>
+  </div>
+
   <!-- Setup Screen -->
-  <div id="setup-screen" class="welcome-screen">
+  <div id="setup-screen" class="welcome-screen hidden">
     <div class="welcome-card">
       <h2 class="welcome-title">🃏 Game Setup</h2>
       <div class="input-group">
@@ -977,18 +989,10 @@
     }
 
     function showScreen(screenId) {
-      console.log('Showing screen:', screenId);
       document.querySelectorAll('.welcome-screen, .game-container').forEach(screen => {
         screen.classList.add('hidden');
-        console.log('Hiding screen:', screen.id);
       });
-      const targetScreen = document.getElementById(screenId);
-      if (targetScreen) {
-        targetScreen.classList.remove('hidden');
-        console.log('Showing screen:', screenId);
-      } else {
-        console.error('Screen not found:', screenId);
-      }
+      document.getElementById(screenId).classList.remove('hidden');
     }
 
     function updateDisplay() {
@@ -1120,70 +1124,99 @@
       document.getElementById('dealer-cards').appendChild(cardElement);
     }
 
-    function updateStatistics() {
-      document.getElementById('total-hands').textContent = stats.totalHands;
-      document.getElementById('hands-won').textContent = stats.handsWon;
-      document.getElementById('hands-lost').textContent = stats.handsLost;
-      document.getElementById('pushes').textContent = stats.pushes;
-      document.getElementById('blackjacks').textContent = stats.blackjacks;
+   function updateStatistics() {
+  // basic counts
+  document.getElementById('total-hands').textContent   = stats.totalHands;
+  document.getElementById('hands-won').textContent    = stats.handsWon;
+  document.getElementById('hands-lost').textContent   = stats.handsLost;
+  document.getElementById('pushes').textContent       = stats.pushes;
+  document.getElementById('blackjacks').textContent   = stats.blackjacks;
 
-      const totalHands = stats.handsWon + stats.handsLost + stats.pushes;
-      const winRate = totalHands > 0 ? (stats.handsWon / totalHands * 100).toFixed(1) : 0;
-      document.getElementById('win-rate').textContent = winRate + '%';
+  // win rate
+  const played = stats.handsWon + stats.handsLost + stats.pushes;
+  const winRate = played > 0 ? (stats.handsWon / played * 100).toFixed(1) : 0;
+  document.getElementById('win-rate').textContent = winRate + '%';
 
-      document.getElementById('starting-bankroll').textContent = ' + startingBankroll;
-      document.getElementById('current-balance').textContent = ' + balance;
-      document.getElementById('total-wagered').textContent = ' + stats.totalWagered;
-      document.getElementById('net-profit').textContent = (stats.netProfit >= 0 ? '+ : '-) + Math.abs(stats.netProfit);
-      document.getElementById('biggest-win').textContent = ' + stats.biggestWin;
+  // bankroll & balances
+  document.getElementById('starting-bankroll').textContent = '$' + startingBankroll;
+  document.getElementById('current-balance').textContent  = '$' + balance;
+  document.getElementById('total-wagered').textContent    = '$' + stats.totalWagered;
 
-      const avgBet = stats.betSizes.length > 0 ? 
-        (stats.betSizes.reduce((a, b) => a + b, 0) / stats.betSizes.length).toFixed(2) : 0;
-      document.getElementById('avg-bet').textContent = ' + avgBet;
+  // net profit (+/−)
+  const netSign = stats.netProfit >= 0 ? '+' : '-';
+  document.getElementById('net-profit').textContent      = netSign + '$' + Math.abs(stats.netProfit);
 
-      if (stats.sessionResults.length > 1) {
-        const mean = stats.sessionResults.reduce((a, b) => a + b, 0) / stats.sessionResults.length;
-        const variance = stats.sessionResults.reduce((sum, result) => sum + Math.pow(result - mean, 2), 0) / stats.sessionResults.length;
-        const stdDev = Math.sqrt(variance);
+  // biggest win
+  document.getElementById('biggest-win').textContent     = '$' + stats.biggestWin;
 
-        document.getElementById('std-deviation').textContent = stdDev.toFixed(2);
-        document.getElementById('variance').textContent = variance.toFixed(2);
-        document.getElementById('expected-value').textContent = (mean >= 0 ? '+ : '-) + Math.abs(mean).toFixed(2);
-      } else {
-        document.getElementById('std-deviation').textContent = '0.00';
-        document.getElementById('variance').textContent = '0.00';
-        document.getElementById('expected-value').textContent = '$0.00';
-      }
+  // average bet
+  const avgBet = stats.betSizes.length
+    ? (stats.betSizes.reduce((a,b) => a + b, 0) / stats.betSizes.length).toFixed(2)
+    : '0.00';
+  document.getElementById('avg-bet').textContent         = '$' + avgBet;
 
-      document.getElementById('hot-streak').textContent = stats.hotStreak;
-      document.getElementById('cold-streak').textContent = stats.coldStreak;
+  // advanced metrics
+  if (stats.sessionResults.length > 1) {
+    const mean = stats.sessionResults.reduce((a,b) => a + b, 0) / stats.sessionResults.length;
+    const variance = stats.sessionResults.reduce((sum, r) => sum + Math.pow(r-mean, 2), 0) 
+                     / stats.sessionResults.length;
+    const stdDev = Math.sqrt(variance);
+    document.getElementById('std-deviation').textContent = stdDev.toFixed(2);
+    document.getElementById('variance').textContent      = variance.toFixed(2);
+    const evSign = mean >= 0 ? '+' : '-';
+    document.getElementById('expected-value').textContent = evSign + '$' + Math.abs(mean).toFixed(2);
+  } else {
+    document.getElementById('std-deviation').textContent = '0.00';
+    document.getElementById('variance').textContent      = '0.00';
+    document.getElementById('expected-value').textContent = '$0.00';
+  }
 
-      const actualRTP = stats.totalWagered > 0 ? 
-        ((stats.totalWagered + stats.netProfit) / stats.totalWagered * 100).toFixed(2) : 99.50;
-      document.getElementById('house-edge').textContent = (100 - actualRTP).toFixed(2) + '%';
-    }
+  // streaks
+  document.getElementById('hot-streak').textContent = stats.hotStreak;
+  document.getElementById('cold-streak').textContent = stats.coldStreak;
+
+  // house edge
+  const actualRTP = stats.totalWagered > 0
+    ? ((stats.totalWagered + stats.netProfit) / stats.totalWagered * 100).toFixed(2)
+    : 99.50;
+  document.getElementById('house-edge').textContent = (100 - actualRTP).toFixed(2) + '%';
+}
+
 
     // Event listeners
     document.addEventListener('DOMContentLoaded', function() {
-      console.log('DOM loaded, setting up event listeners');
       buildDeck();
-      playerName = 'Player'; // Set default name
 
-      // Setup continue - with debugging
-      const setupBtn = document.getElementById('setup-continue-btn');
-      console.log('Setup button found:', setupBtn);
-      
-      if (setupBtn) {
-        setupBtn.addEventListener('click', function() {
-          console.log('Setup continue clicked');
-          numHands = parseInt(document.getElementById('num-hands').value);
-          minBet = parseInt(document.getElementById('min-bet').value);
-          console.log('Selected hands:', numHands, 'min bet:', minBet);
-          showScreen('deposit-screen');
-        });
-      } else {
-        console.error('Setup button not found!');
-      }
+      // Name continue
+      document.getElementById('name-continue-btn').addEventListener('click', function() {
+        console.log('Continue button clicked');
+        const nameInput = document.getElementById('player-name');
+        console.log('Name input value:', nameInput.value);
+        
+        if (nameInput.value.trim()) {
+          playerName = nameInput.value.trim();
+          console.log('Player name set to:', playerName);
+          document.getElementById('player-name-display').textContent = playerName;
+          showScreen('setup-screen');
+          console.log('Switching to setup screen');
+        } else {
+          alert('Please enter your name!');
+        }
+      });
+
+      // Allow Enter key to continue
+      document.getElementById('player-name').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          document.getElementById('name-continue-btn').click();
+        }
+      });
+
+      // Setup continue
+      document.getElementById('setup-continue-btn').addEventListener('click', function() {
+        numHands = parseInt(document.getElementById('num-hands').value);
+        minBet = parseInt(document.getElementById('min-bet').value);
+        showScreen('deposit-screen');
+      });
 
       // Deposit buttons
       document.querySelectorAll('.deposit-btn').forEach(btn => {
