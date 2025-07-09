@@ -582,20 +582,8 @@
   </style>
 </head>
 <body>
-  <!-- Welcome Screen -->
-  <div id="welcome-screen" class="welcome-screen">
-    <div class="welcome-card">
-      <h1 class="welcome-title">🎰 Welcome to Elite Blackjack</h1>
-      <div class="input-group">
-        <label for="player-name">Enter Your Name:</label>
-        <input type="text" id="player-name" placeholder="Your name" maxlength="15">
-      </div>
-      <button class="btn" id="name-continue-btn">Continue</button>
-    </div>
-  </div>
-
   <!-- Setup Screen -->
-  <div id="setup-screen" class="welcome-screen hidden">
+  <div id="setup-screen" class="welcome-screen">
     <div class="welcome-card">
       <h2 class="welcome-title">🃏 Game Setup</h2>
       <div class="input-group">
@@ -989,10 +977,18 @@
     }
 
     function showScreen(screenId) {
+      console.log('Showing screen:', screenId);
       document.querySelectorAll('.welcome-screen, .game-container').forEach(screen => {
         screen.classList.add('hidden');
+        console.log('Hiding screen:', screen.id);
       });
-      document.getElementById(screenId).classList.remove('hidden');
+      const targetScreen = document.getElementById(screenId);
+      if (targetScreen) {
+        targetScreen.classList.remove('hidden');
+        console.log('Showing screen:', screenId);
+      } else {
+        console.error('Screen not found:', screenId);
+      }
     }
 
     function updateDisplay() {
@@ -1169,38 +1165,25 @@
 
     // Event listeners
     document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM loaded, setting up event listeners');
       buildDeck();
+      playerName = 'Player'; // Set default name
 
-      // Name continue
-      document.getElementById('name-continue-btn').addEventListener('click', function() {
-        console.log('Continue button clicked');
-        const nameInput = document.getElementById('player-name');
-        console.log('Name input value:', nameInput.value);
-        
-        if (nameInput.value.trim()) {
-          playerName = nameInput.value.trim();
-          console.log('Player name set to:', playerName);
-          document.getElementById('player-name-display').textContent = playerName;
-          showScreen('setup-screen');
-          console.log('Switching to setup screen');
-        } else {
-          alert('Please enter your name!');
-        }
-      });
-
-      // Allow Enter key to continue
-      document.getElementById('player-name').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-          document.getElementById('name-continue-btn').click();
-        }
-      });
-
-      // Setup continue
-      document.getElementById('setup-continue-btn').addEventListener('click', function() {
-        numHands = parseInt(document.getElementById('num-hands').value);
-        minBet = parseInt(document.getElementById('min-bet').value);
-        showScreen('deposit-screen');
-      });
+      // Setup continue - with debugging
+      const setupBtn = document.getElementById('setup-continue-btn');
+      console.log('Setup button found:', setupBtn);
+      
+      if (setupBtn) {
+        setupBtn.addEventListener('click', function() {
+          console.log('Setup continue clicked');
+          numHands = parseInt(document.getElementById('num-hands').value);
+          minBet = parseInt(document.getElementById('min-bet').value);
+          console.log('Selected hands:', numHands, 'min bet:', minBet);
+          showScreen('deposit-screen');
+        });
+      } else {
+        console.error('Setup button not found!');
+      }
 
       // Deposit buttons
       document.querySelectorAll('.deposit-btn').forEach(btn => {
