@@ -307,11 +307,19 @@
       background: #ffd700;
       color: #000;
       border: none;
-      padding: 6px 12px;
-      border-radius: 5px;
+      padding: 10px 16px;
+      border-radius: 8px;
       cursor: pointer;
       font-weight: bold;
-      font-size: 12px;
+      font-size: 14px;
+      margin: 2px;
+      transition: all 0.3s ease;
+      min-width: 70px;
+    }
+
+    .hand-controls button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
     }
 
     .hand-controls button:disabled {
@@ -582,20 +590,8 @@
   </style>
 </head>
 <body>
-  <!-- Welcome Screen -->
-  <div id="welcome-screen" class="welcome-screen">
-    <div class="welcome-card">
-      <h1 class="welcome-title">🎰 Welcome to Elite Blackjack</h1>
-      <div class="input-group">
-        <label for="player-name">Enter Your Name:</label>
-        <input type="text" id="player-name" placeholder="Your name" maxlength="15">
-      </div>
-      <button class="btn" id="name-continue-btn">Continue</button>
-    </div>
-  </div>
-
   <!-- Setup Screen -->
-  <div id="setup-screen" class="welcome-screen hidden">
+  <div id="setup-screen" class="welcome-screen">
     <div class="welcome-card">
       <h2 class="welcome-title">🃏 Game Setup</h2>
       <div class="input-group">
@@ -989,10 +985,18 @@
     }
 
     function showScreen(screenId) {
+      console.log('Showing screen:', screenId);
       document.querySelectorAll('.welcome-screen, .game-container').forEach(screen => {
         screen.classList.add('hidden');
+        console.log('Hiding screen:', screen.id);
       });
-      document.getElementById(screenId).classList.remove('hidden');
+      const targetScreen = document.getElementById(screenId);
+      if (targetScreen) {
+        targetScreen.classList.remove('hidden');
+        console.log('Showing screen:', screenId);
+      } else {
+        console.error('Screen not found:', screenId);
+      }
     }
 
     function updateDisplay() {
@@ -1124,99 +1128,2314 @@
       document.getElementById('dealer-cards').appendChild(cardElement);
     }
 
-   function updateStatistics() {
-  // basic counts
-  document.getElementById('total-hands').textContent   = stats.totalHands;
-  document.getElementById('hands-won').textContent    = stats.handsWon;
-  document.getElementById('hands-lost').textContent   = stats.handsLost;
-  document.getElementById('pushes').textContent       = stats.pushes;
-  document.getElementById('blackjacks').textContent   = stats.blackjacks;
+     // Game action functions
+    function hit(handIndex) {
+      if (handIndex !== currentHand || !playerHands[handIndex].active || playerHands[handIndex].finished) return;
+      
+      speak(getRandomQuote('hit'));
+      
+      setTimeout(() => {
+        dealCardToPlayer(handIndex);
+        
+        setTimeout(() => {
+          updateHandDisplay(handIndex);
+          const handValue = getHandValue(playerHands[handIndex].cards);
+          
+          if (handValue > 21) {
+            playerHands[handIndex].finished = true;
+            stats.handsLost++;
+            speak(getRandomQuote('bust'));
+            updateHandControls();
+            
+            setTimeout(() => {
+              findNextActiveHand();
+              if (allHandsFinished()) {
+                dealerPlay();
+              } else {
+                playCurrentHand();
+              }
+            }, 1500);
+          } else {
+            updateHandControls();
+          }
+        }, 600);
+      }, 500);
+    }
 
-  // win rate
-  const played = stats.handsWon + stats.handsLost + stats.pushes;
-  const winRate = played > 0 ? (stats.handsWon / played * 100).toFixed(1) : 0;
-  document.getElementById('win-rate').textContent = winRate + '%';
+    function stand(handIndex) {
+      if (handIndex !== currentHand || !playerHands[handIndex].active || playerHands[handIndex].finished) return;
+      
+      playerHands[handIndex].finished = true;
+      speak(getRandomQuote('stand'));
+      updateHandControls();
+      
+      setTimeout(() => {
+        findNextActiveHand();
+        if (allHandsFinished()) {
+          dealerPlay();
+        } else {
+          playCurrentHand();
+        }
+      }, 1000);
+    }
 
-  // bankroll & balances
-  document.getElementById('starting-bankroll').textContent = '$' + startingBankroll;
-  document.getElementById('current-balance').textContent  = '$' + balance;
-  document.getElementById('total-wagered').textContent    = '$' + stats.totalWagered;
+    function double(handIndex) {
+      if (handIndex !== currentHand || !playerHands[handIndex].active || playerHands[handIndex].finished) return;
+      if (playerHands[handIndex].cards.length !== 2) return;
+      if (balance < playerHands[handIndex].bet) return;
 
-  // net profit (+/−)
-  const netSign = stats.netProfit >= 0 ? '+' : '-';
-  document.getElementById('net-profit').textContent      = netSign + '$' + Math.abs(stats.netProfit);
+      balance -= playerHands[handIndex].bet;
+      playerHands[handIndex].bet *= 2;
+      playerHands[handIndex].doubled = true;
 
-  // biggest win
-  document.getElementById('biggest-win').textContent     = '$' + stats.biggestWin;
+      speak(`Doubling down, ${playerName}!`);
 
-  // average bet
-  const avgBet = stats.betSizes.length
-    ? (stats.betSizes.reduce((a,b) => a + b, 0) / stats.betSizes.length).toFixed(2)
-    : '0.00';
-  document.getElementById('avg-bet').textContent         = '$' + avgBet;
+      setTimeout(() => {
+        dealCardToPlayer(handIndex);
 
-  // advanced metrics
-  if (stats.sessionResults.length > 1) {
-    const mean = stats.sessionResults.reduce((a,b) => a + b, 0) / stats.sessionResults.length;
-    const variance = stats.sessionResults.reduce((sum, r) => sum + Math.pow(r-mean, 2), 0) 
-                     / stats.sessionResults.length;
-    const stdDev = Math.sqrt(variance);
-    document.getElementById('std-deviation').textContent = stdDev.toFixed(2);
-    document.getElementById('variance').textContent      = variance.toFixed(2);
-    const evSign = mean >= 0 ? '+' : '-';
-    document.getElementById('expected-value').textContent = evSign + '$' + Math.abs(mean).toFixed(2);
-  } else {
-    document.getElementById('std-deviation').textContent = '0.00';
-    document.getElementById('variance').textContent      = '0.00';
-    document.getElementById('expected-value').textContent = '$0.00';
-  }
+        setTimeout(() => {
+          updateDisplay();
+          updateHandDisplay(handIndex);
+          playerHands[handIndex].finished = true;
 
-  // streaks
-  document.getElementById('hot-streak').textContent = stats.hotStreak;
-  document.getElementById('cold-streak').textContent = stats.coldStreak;
+          const handValue = getHandValue(playerHands[handIndex].cards);
+          if (handValue > 21) {
+            stats.handsLost++;
+            speak(getRandomQuote('bust'));
+          }
 
-  // house edge
-  const actualRTP = stats.totalWagered > 0
-    ? ((stats.totalWagered + stats.netProfit) / stats.totalWagered * 100).toFixed(2)
-    : 99.50;
-  document.getElementById('house-edge').textContent = (100 - actualRTP).toFixed(2) + '%';
-}
+          updateHandControls();
 
+          setTimeout(() => {
+            findNextActiveHand();
+            if (allHandsFinished()) {
+              dealerPlay();
+            } else {
+              playCurrentHand();
+            }
+          }, 1500);
+        }, 600);
+      }, 500);
+    }
+
+    function split(handIndex) {
+      if (handIndex !== currentHand || !playerHands[handIndex].active || playerHands[handIndex].finished) return;
+      if (playerHands[handIndex].cards.length !== 2) return;
+      if (playerHands[handIndex].cards[0].value !== playerHands[handIndex].cards[1].value) return;
+      if (balance < playerHands[handIndex].bet) return;
+      if (playerHands.length >= 4) return;
+
+      balance -= playerHands[handIndex].bet;
+
+      // Create new hand
+      const secondCard = playerHands[handIndex].cards.pop();
+      const newHand = {
+        cards: [secondCard],
+        bet: playerHands[handIndex].bet,
+        active: true,
+        finished: false,
+        doubled: false,
+        split: true
+      };
+
+      playerHands.splice(handIndex + 1, 0, newHand);
+      playerHands[handIndex].split = true;
+
+      speak(`Splitting cards, ${playerName}!`);
+
+      // Recreate hands display
+      createPlayerHands();
+      
+      // Restore card data to visual display
+      for (let i = 0; i < playerHands.length; i++) {
+        if (playerHands[i].cards.length > 0) {
+          const cardsContainer = document.getElementById(`cards-${i}`);
+          cardsContainer.innerHTML = '';
+          for (let card of playerHands[i].cards) {
+            const cardElement = createCardElement(card, false);
+            cardsContainer.appendChild(cardElement);
+          }
+        }
+        updateHandDisplay(i);
+      }
+
+      // Deal new cards to both hands
+      setTimeout(() => {
+        dealCardToPlayer(handIndex);
+        setTimeout(() => {
+          dealCardToPlayer(handIndex + 1);
+          setTimeout(() => {
+            updateAllDisplays();
+            updateHandControls();
+          }, 600);
+        }, 300);
+      }, 1000);
+    }
+
+    function findNextActiveHand() {
+      for (let i = 0; i < playerHands.length; i++) {
+        if (playerHands[i].active && !playerHands[i].finished) {
+          currentHand = i;
+          return;
+        }
+      }
+      currentHand = -1;
+    }
+
+    function allHandsFinished() {
+      return playerHands.every(hand => !hand.active || hand.finished);
+    }
+
+    function playCurrentHand() {
+      if (currentHand === -1) return;
+      
+      updateHandControls();
+      const handNumber = numHands > 1 ? ` (Hand ${currentHand + 1})` : '';
+      speak(`Your turn, ${playerName}${handNumber}. Hit or stand?`);
+    }
+
+    function updateHandControls() {
+      for (let i = 0; i < playerHands.length; i++) {
+        const handDiv = document.querySelector(`#player-hands .hand:nth-child(${i + 1})`);
+        if (!handDiv) continue;
+
+        const buttons = handDiv.querySelectorAll('.hand-controls button');
+
+        if (i === currentHand && playerHands[i].active && !playerHands[i].finished && gameActive) {
+          buttons[0].disabled = false; // Hit
+          buttons[1].disabled = false; // Stand
+
+          // Double - only on first two cards with enough money
+          buttons[2].disabled = playerHands[i].cards.length !== 2 || 
+                               balance < playerHands[i].bet ||
+                               playerHands[i].doubled;
+
+          // Split - only on matching pairs with enough money
+          const canSplit = playerHands[i].cards.length === 2 &&
+                          playerHands[i].cards[0].value === playerHands[i].cards[1].value &&
+                          balance >= playerHands[i].bet &&
+                          playerHands.length < 4;
+
+          buttons[3].disabled = !canSplit;
+        } else {
+          buttons.forEach(btn => btn.disabled = true);
+        }
+      }
+    }
+
+    function dealerPlay() {
+      if (!dealerRevealed) {
+        dealerRevealed = true;
+        revealDealerCard();
+      }
+
+      setTimeout(() => {
+        const dealerValue = getHandValue(dealerHand);
+        updateDealerDisplay();
+
+        if (dealerValue < 17) {
+          setTimeout(() => {
+            dealCardToDealer(false);
+            setTimeout(() => dealerPlay(), 800);
+          }, 1000);
+        } else {
+          setTimeout(() => endRound(), 1000);
+        }
+      }, 1000);
+    }
+
+    function revealDealerCard() {
+      const dealerCards = document.getElementById('dealer-cards');
+      const faceDownCards = dealerCards.querySelectorAll('.face-down');
+
+      faceDownCards.forEach(cardEl => {
+        const cardIndex = Array.from(dealerCards.children).indexOf(cardEl);
+        const card = dealerHand[cardIndex];
+
+        cardEl.classList.remove('face-down');
+        if (card.suit === '♥' || card.suit === '♦') {
+          cardEl.classList.add('red');
+        }
+
+        cardEl.innerHTML = `
+          <div>${card.value}</div>
+          <div style="font-size: 16px;">${card.suit}</div>
+          <div style="transform: rotate(180deg);">${card.value}</div>
+        `;
+      });
+
+      updateDealerDisplay();
+    }
+
+    function endRound() {
+      const dealerValue = getHandValue(dealerHand);
+      const dealerBusted = dealerValue > 21;
+
+      if (dealerBusted) {
+        speak(`Dealer busts! You win, ${playerName}!`);
+      }
+
+      let totalWinnings = 0;
+      let sessionResult = 0;
+
+      for (let i = 0; i < playerHands.length; i++) {
+        if (!playerHands[i].active) continue;
+
+        const hand = playerHands[i];
+        const playerValue = getHandValue(hand.cards);
+        let payout = 0;
+
+        if (playerValue > 21) {
+          // Already handled in hit function
+        } else if (dealerBusted) {
+          payout = hand.bet * 2;
+          stats.handsWon++;
+        } else if (playerValue > dealerValue) {
+          payout = hand.bet * 2;
+          stats.handsWon++;
+        } else if (playerValue < dealerValue) {
+          stats.handsLost++;
+        } else {
+          payout = hand.bet;
+          stats.pushes++;
+        }
+
+        balance += payout;
+        const handProfit = payout - hand.bet;
+        totalWinnings += handProfit;
+        sessionResult += handProfit;
+      }
+
+      // Update statistics
+      stats.netProfit += sessionResult;
+      stats.sessionResults.push(sessionResult);
+
+      if (sessionResult > stats.biggestWin) {
+        stats.biggestWin = sessionResult;
+      }
+      if (sessionResult < 0 && Math.abs(sessionResult) > stats.biggestLoss) {
+        stats.biggestLoss = Math.abs(sessionResult);
+      }
+
+      // Reset hands
+      for (let i = 0; i < playerHands.length; i++) {
+        playerHands[i] = {
+          cards: [],
+          bet: 0,
+          active: false,
+          finished: false,
+          doubled: false,
+          split: false
+        };
+      }
+
+      gameActive = false;
+      updateDisplay();
+      updateHandControls();
+
+      // Show final result
+      setTimeout(() => {
+        if (totalWinnings > 0) {
+          speak(`Great round, ${playerName}! You won ${totalWinnings}!`);
+        } else if (totalWinnings < 0) {
+          speak(`Better luck next time, ${playerName}.`);
+        } else {
+          speak(`Push! Even game, ${playerName}.`);
+        }
+      }, 2000);
+    }
+      // Basic stats
+      document.getElementById('total-hands').textContent = stats.totalHands;
+      document.getElementById('hands-won').textContent = stats.handsWon;
+      document.getElementById('hands-lost').textContent = stats.handsLost;
+      document.getElementById('pushes').textContent = stats.pushes;
+      document.getElementById('blackjacks').textContent = stats.blackjacks;
+
+      const totalHands = stats.handsWon + stats.handsLost + stats.pushes;
+      const winRate = totalHands > 0 ? (stats.handsWon / totalHands * 100).toFixed(1) : 0;
+      document.getElementById('win-rate').textContent = winRate + '%';
+
+      // Financial stats
+      document.getElementById('starting-bankroll').textContent = '
 
     // Event listeners
     document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM loaded, setting up event listeners');
       buildDeck();
+      playerName = 'Player'; // Set default name
 
-      // Name continue
-      document.getElementById('name-continue-btn').addEventListener('click', function() {
-        console.log('Continue button clicked');
-        const nameInput = document.getElementById('player-name');
-        console.log('Name input value:', nameInput.value);
+      // Setup continue - with debugging
+      const setupBtn = document.getElementById('setup-continue-btn');
+      console.log('Setup button found:', setupBtn);
+      
+      if (setupBtn) {
+        setupBtn.addEventListener('click', function() {
+          console.log('Setup continue clicked');
+          numHands = parseInt(document.getElementById('num-hands').value);
+          minBet = parseInt(document.getElementById('min-bet').value);
+          console.log('Selected hands:', numHands, 'min bet:', minBet);
+          showScreen('deposit-screen');
+        });
+      } else {
+        console.error('Setup button not found!');
+      }
+
+      // Deposit buttons
+      document.querySelectorAll('.deposit-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.deposit-btn').forEach(b => b.classList.remove('selected'));
+          this.classList.add('selected');
+          document.getElementById('custom-amount').value = this.dataset.amount;
+        });
+      });
+
+      // Deposit continue
+      document.getElementById('deposit-continue-btn').addEventListener('click', function() {
+        let amount = parseInt(document.getElementById('custom-amount').value);
         
-        if (nameInput.value.trim()) {
-          playerName = nameInput.value.trim();
-          console.log('Player name set to:', playerName);
-          document.getElementById('player-name-display').textContent = playerName;
-          showScreen('setup-screen');
-          console.log('Switching to setup screen');
+        if (!amount) {
+          const selected = document.querySelector('.deposit-btn.selected');
+          if (selected) {
+            amount = parseInt(selected.dataset.amount);
+          }
+        }
+        
+        if (amount && amount >= 100 && amount <= 100000) {
+          balance = amount;
+          startingBankroll = amount;
+          showScreen('game-container');
+          createPlayerHands();
+          updateDisplay();
+          speak(getRandomQuote('welcome'));
         } else {
-          alert('Please enter your name!');
+          alert('Please enter a valid amount between $100 and $100,000');
         }
       });
 
-      // Allow Enter key to continue
-      document.getElementById('player-name').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-          document.getElementById('name-continue-btn').click();
+      // Navigation tabs
+      document.getElementById('game-tab').addEventListener('click', function() {
+        document.getElementById('game-area').classList.remove('hidden');
+        document.getElementById('stats-page').classList.add('hidden');
+        document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+        this.classList.add('active');
+      });
+
+      document.getElementById('stats-tab').addEventListener('click', function() {
+        document.getElementById('game-area').classList.add('hidden');
+        document.getElementById('stats-page').classList.remove('hidden');
+        document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+        this.classList.add('active');
+        updateStatistics();
+      });
+
+      // Chip betting
+      document.querySelectorAll('.chip').forEach(chip => {
+        chip.addEventListener('click', function() {
+          if (gameActive) return;
+          
+          const amount = parseInt(this.dataset.value);
+          
+          for (let i = 0; i < playerHands.length; i++) {
+            if (playerHands[i].bet === 0) {
+              if (balance >= amount && amount >= minBet) {
+                playerHands[i].bet = amount;
+                balance -= amount;
+                updateDisplay();
+                updateHandDisplay(i);
+                return;
+              } else if (amount < minBet) {
+                speak(`Minimum bet is ${minBet}, ${playerName}.`);
+                return;
+              }
+            }
+          }
+          
+          if (balance >= amount) {
+            playerHands[0].bet += amount;
+            balance -= amount;
+            updateDisplay();
+            updateHandDisplay(0);
+          }
+        });
+      });
+
+      // Hand control buttons - Add event delegation
+      document.getElementById('player-hands').addEventListener('click', function(e) {
+        if (e.target.tagName === 'BUTTON' && e.target.dataset.action) {
+          const action = e.target.dataset.action;
+          const handIndex = parseInt(e.target.dataset.hand);
+          
+          if (e.target.disabled || !gameActive) return;
+          
+          switch(action) {
+            case 'hit':
+              hit(handIndex);
+              break;
+            case 'stand':
+              stand(handIndex);
+              break;
+            case 'double':
+              double(handIndex);
+              break;
+            case 'split':
+              split(handIndex);
+              break;
+          }
+        }
+      });
+      document.getElementById('deal-btn').addEventListener('click', function() {
+        const totalBets = playerHands.reduce((sum, hand) => sum + hand.bet, 0);
+        if (totalBets === 0) {
+          speak(`Place your bets first, ${playerName}!`);
+          return;
+        }
+
+        for (let hand of playerHands) {
+          if (hand.bet > 0 && hand.bet < minBet) {
+            speak(`Minimum bet is ${minBet}, ${playerName}.`);
+            return;
+          }
+        }
+
+        gameActive = true;
+        dealerRevealed = false;
+        insuranceTaken = false;
+        currentHand = 0;
+
+        dealerHand = [];
+        for (let i = 0; i < playerHands.length; i++) {
+          if (playerHands[i].bet > 0) {
+            playerHands[i].cards = [];
+            playerHands[i].active = true;
+            playerHands[i].finished = false;
+          } else {
+            playerHands[i].active = false;
+            playerHands[i].finished = true;
+          }
+        }
+
+        document.getElementById('dealer-cards').innerHTML = '';
+        for (let i = 0; i < playerHands.length; i++) {
+          document.getElementById(`cards-${i}`).innerHTML = '';
+        }
+
+        speak(getRandomQuote('deal'));
+
+        stats.totalHands++;
+        const totalBet = playerHands.reduce((sum, hand) => sum + hand.bet, 0);
+        stats.totalWagered += totalBet;
+        stats.betSizes.push(totalBet);
+
+        // Deal initial cards with proper blackjack logic
+        setTimeout(() => {
+          // Deal two cards to each active hand
+          for (let i = 0; i < playerHands.length; i++) {
+            if (playerHands[i].active) {
+              dealCardToPlayer(i);
+              dealCardToPlayer(i);
+            }
+          }
+          // Deal dealer cards (one face up, one face down)
+          dealCardToDealer(false);
+          dealCardToDealer(true);
+          
+          updateAllDisplays();
+          
+          // Check for blackjacks
+          setTimeout(() => {
+            checkForBlackjacks();
+          }, 1000);
+        }, 1000);
+      });
+
+    function checkForBlackjacks() {
+      const dealerBlackjack = isBlackjack(dealerHand);
+      let playerBlackjacks = [];
+
+      // Check each active hand for blackjack
+      for (let i = 0; i < playerHands.length; i++) {
+        if (playerHands[i].active && isBlackjack(playerHands[i].cards)) {
+          playerBlackjacks.push(i);
+        }
+      }
+
+      if (dealerBlackjack || playerBlackjacks.length > 0) {
+        dealerRevealed = true;
+        revealDealerCard();
+
+        setTimeout(() => {
+          if (dealerBlackjack) {
+            // Handle blackjacks
+            for (let handIndex of playerBlackjacks) {
+              playerHands[handIndex].finished = true;
+              balance += playerHands[handIndex].bet; // Push
+              stats.pushes++;
+            }
+
+            // Dealer wins other hands
+            for (let i = 0; i < playerHands.length; i++) {
+              if (playerHands[i].active && !playerBlackjacks.includes(i)) {
+                playerHands[i].finished = true;
+                stats.handsLost++;
+              }
+            }
+
+            speak(`Dealer blackjack! ${playerBlackjacks.length > 0 ? 'Pushes for your blackjacks' : 'House wins'}, ${playerName}.`);
+          } else {
+            // Player blackjacks win
+            for (let handIndex of playerBlackjacks) {
+              playerHands[handIndex].finished = true;
+              const payout = Math.floor(playerHands[handIndex].bet * 2.5); // 3:2 payout
+              balance += payout;
+              stats.handsWon++;
+              stats.blackjacks++;
+            }
+
+            if (playerBlackjacks.length > 0) {
+              speak(getRandomQuote('blackjack'));
+            }
+          }
+
+          setTimeout(() => {
+            if (allHandsFinished()) {
+              endRound();
+            } else {
+              findNextActiveHand();
+              playCurrentHand();
+            }
+          }, 2000);
+        }, 1000);
+
+        return;
+      }
+
+      // No blackjacks, start normal play
+      findNextActiveHand();
+      playCurrentHand();
+      });
+
+      document.getElementById('clear-btn').addEventListener('click', function() {
+        if (gameActive) return;
+        
+        for (let i = 0; i < playerHands.length; i++) {
+          balance += playerHands[i].bet;
+          playerHands[i].bet = 0;
+          updateHandDisplay(i);
+        }
+        updateDisplay();
+      });
+
+      document.getElementById('max-btn').addEventListener('click', function() {
+        if (gameActive) return;
+        
+        const maxBetAmount = Math.floor(balance / numHands);
+        if (maxBetAmount >= minBet) {
+          for (let i = 0; i < playerHands.length; i++) {
+            balance += playerHands[i].bet;
+            playerHands[i].bet = maxBetAmount;
+            balance -= maxBetAmount;
+            updateHandDisplay(i);
+          }
+          updateDisplay();
+        }
+      });
+    });
+  </script>
+</body>
+</html> + startingBankroll;
+      document.getElementById('current-balance').textContent = '
+
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM loaded, setting up event listeners');
+      buildDeck();
+      playerName = 'Player'; // Set default name
+
+      // Setup continue - with debugging
+      const setupBtn = document.getElementById('setup-continue-btn');
+      console.log('Setup button found:', setupBtn);
+      
+      if (setupBtn) {
+        setupBtn.addEventListener('click', function() {
+          console.log('Setup continue clicked');
+          numHands = parseInt(document.getElementById('num-hands').value);
+          minBet = parseInt(document.getElementById('min-bet').value);
+          console.log('Selected hands:', numHands, 'min bet:', minBet);
+          showScreen('deposit-screen');
+        });
+      } else {
+        console.error('Setup button not found!');
+      }
+
+      // Deposit buttons
+      document.querySelectorAll('.deposit-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.deposit-btn').forEach(b => b.classList.remove('selected'));
+          this.classList.add('selected');
+          document.getElementById('custom-amount').value = this.dataset.amount;
+        });
+      });
+
+      // Deposit continue
+      document.getElementById('deposit-continue-btn').addEventListener('click', function() {
+        let amount = parseInt(document.getElementById('custom-amount').value);
+        
+        if (!amount) {
+          const selected = document.querySelector('.deposit-btn.selected');
+          if (selected) {
+            amount = parseInt(selected.dataset.amount);
+          }
+        }
+        
+        if (amount && amount >= 100 && amount <= 100000) {
+          balance = amount;
+          startingBankroll = amount;
+          showScreen('game-container');
+          createPlayerHands();
+          updateDisplay();
+          speak(getRandomQuote('welcome'));
+        } else {
+          alert('Please enter a valid amount between $100 and $100,000');
         }
       });
 
-      // Setup continue
-      document.getElementById('setup-continue-btn').addEventListener('click', function() {
-        numHands = parseInt(document.getElementById('num-hands').value);
-        minBet = parseInt(document.getElementById('min-bet').value);
-        showScreen('deposit-screen');
+      // Navigation tabs
+      document.getElementById('game-tab').addEventListener('click', function() {
+        document.getElementById('game-area').classList.remove('hidden');
+        document.getElementById('stats-page').classList.add('hidden');
+        document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+        this.classList.add('active');
       });
+
+      document.getElementById('stats-tab').addEventListener('click', function() {
+        document.getElementById('game-area').classList.add('hidden');
+        document.getElementById('stats-page').classList.remove('hidden');
+        document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+        this.classList.add('active');
+        updateStatistics();
+      });
+
+      // Chip betting
+      document.querySelectorAll('.chip').forEach(chip => {
+        chip.addEventListener('click', function() {
+          if (gameActive) return;
+          
+          const amount = parseInt(this.dataset.value);
+          
+          for (let i = 0; i < playerHands.length; i++) {
+            if (playerHands[i].bet === 0) {
+              if (balance >= amount && amount >= minBet) {
+                playerHands[i].bet = amount;
+                balance -= amount;
+                updateDisplay();
+                updateHandDisplay(i);
+                return;
+              } else if (amount < minBet) {
+                speak(`Minimum bet is ${minBet}, ${playerName}.`);
+                return;
+              }
+            }
+          }
+          
+          if (balance >= amount) {
+            playerHands[0].bet += amount;
+            balance -= amount;
+            updateDisplay();
+            updateHandDisplay(0);
+          }
+        });
+      });
+
+      // Game controls
+      document.getElementById('deal-btn').addEventListener('click', function() {
+        const totalBets = playerHands.reduce((sum, hand) => sum + hand.bet, 0);
+        if (totalBets === 0) {
+          speak(`Place your bets first, ${playerName}!`);
+          return;
+        }
+
+        for (let hand of playerHands) {
+          if (hand.bet > 0 && hand.bet < minBet) {
+            speak(`Minimum bet is ${minBet}, ${playerName}.`);
+            return;
+          }
+        }
+
+        gameActive = true;
+        dealerRevealed = false;
+        insuranceTaken = false;
+        currentHand = 0;
+
+        dealerHand = [];
+        for (let i = 0; i < playerHands.length; i++) {
+          if (playerHands[i].bet > 0) {
+            playerHands[i].cards = [];
+            playerHands[i].active = true;
+            playerHands[i].finished = false;
+          } else {
+            playerHands[i].active = false;
+            playerHands[i].finished = true;
+          }
+        }
+
+        document.getElementById('dealer-cards').innerHTML = '';
+        for (let i = 0; i < playerHands.length; i++) {
+          document.getElementById(`cards-${i}`).innerHTML = '';
+        }
+
+        speak(getRandomQuote('deal'));
+
+        stats.totalHands++;
+        const totalBet = playerHands.reduce((sum, hand) => sum + hand.bet, 0);
+        stats.totalWagered += totalBet;
+        stats.betSizes.push(totalBet);
+
+        // Simple dealing for now
+        setTimeout(() => {
+          // Deal cards
+          for (let i = 0; i < playerHands.length; i++) {
+            if (playerHands[i].active) {
+              dealCardToPlayer(i);
+              dealCardToPlayer(i);
+            }
+          }
+          dealCardToDealer(false);
+          dealCardToDealer(true);
+          
+          updateAllDisplays();
+          
+          // Basic game end for demo
+          setTimeout(() => {
+            gameActive = false;
+            for (let i = 0; i < playerHands.length; i++) {
+              if (playerHands[i].active) {
+                balance += playerHands[i].bet * 2; // Simple win
+                playerHands[i].bet = 0;
+                updateHandDisplay(i);
+              }
+            }
+            updateDisplay();
+            speak(getRandomQuote('win'));
+          }, 2000);
+        }, 1000);
+      });
+
+      document.getElementById('clear-btn').addEventListener('click', function() {
+        if (gameActive) return;
+        
+        for (let i = 0; i < playerHands.length; i++) {
+          balance += playerHands[i].bet;
+          playerHands[i].bet = 0;
+          updateHandDisplay(i);
+        }
+        updateDisplay();
+      });
+
+      document.getElementById('max-btn').addEventListener('click', function() {
+        if (gameActive) return;
+        
+        const maxBetAmount = Math.floor(balance / numHands);
+        if (maxBetAmount >= minBet) {
+          for (let i = 0; i < playerHands.length; i++) {
+            balance += playerHands[i].bet;
+            playerHands[i].bet = maxBetAmount;
+            balance -= maxBetAmount;
+            updateHandDisplay(i);
+          }
+          updateDisplay();
+        }
+      });
+    });
+  </script>
+</body>
+</html> + balance;
+      document.getElementById('total-wagered').textContent = '
+
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM loaded, setting up event listeners');
+      buildDeck();
+      playerName = 'Player'; // Set default name
+
+      // Setup continue - with debugging
+      const setupBtn = document.getElementById('setup-continue-btn');
+      console.log('Setup button found:', setupBtn);
+      
+      if (setupBtn) {
+        setupBtn.addEventListener('click', function() {
+          console.log('Setup continue clicked');
+          numHands = parseInt(document.getElementById('num-hands').value);
+          minBet = parseInt(document.getElementById('min-bet').value);
+          console.log('Selected hands:', numHands, 'min bet:', minBet);
+          showScreen('deposit-screen');
+        });
+      } else {
+        console.error('Setup button not found!');
+      }
+
+      // Deposit buttons
+      document.querySelectorAll('.deposit-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.deposit-btn').forEach(b => b.classList.remove('selected'));
+          this.classList.add('selected');
+          document.getElementById('custom-amount').value = this.dataset.amount;
+        });
+      });
+
+      // Deposit continue
+      document.getElementById('deposit-continue-btn').addEventListener('click', function() {
+        let amount = parseInt(document.getElementById('custom-amount').value);
+        
+        if (!amount) {
+          const selected = document.querySelector('.deposit-btn.selected');
+          if (selected) {
+            amount = parseInt(selected.dataset.amount);
+          }
+        }
+        
+        if (amount && amount >= 100 && amount <= 100000) {
+          balance = amount;
+          startingBankroll = amount;
+          showScreen('game-container');
+          createPlayerHands();
+          updateDisplay();
+          speak(getRandomQuote('welcome'));
+        } else {
+          alert('Please enter a valid amount between $100 and $100,000');
+        }
+      });
+
+      // Navigation tabs
+      document.getElementById('game-tab').addEventListener('click', function() {
+        document.getElementById('game-area').classList.remove('hidden');
+        document.getElementById('stats-page').classList.add('hidden');
+        document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+        this.classList.add('active');
+      });
+
+      document.getElementById('stats-tab').addEventListener('click', function() {
+        document.getElementById('game-area').classList.add('hidden');
+        document.getElementById('stats-page').classList.remove('hidden');
+        document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+        this.classList.add('active');
+        updateStatistics();
+      });
+
+      // Chip betting
+      document.querySelectorAll('.chip').forEach(chip => {
+        chip.addEventListener('click', function() {
+          if (gameActive) return;
+          
+          const amount = parseInt(this.dataset.value);
+          
+          for (let i = 0; i < playerHands.length; i++) {
+            if (playerHands[i].bet === 0) {
+              if (balance >= amount && amount >= minBet) {
+                playerHands[i].bet = amount;
+                balance -= amount;
+                updateDisplay();
+                updateHandDisplay(i);
+                return;
+              } else if (amount < minBet) {
+                speak(`Minimum bet is ${minBet}, ${playerName}.`);
+                return;
+              }
+            }
+          }
+          
+          if (balance >= amount) {
+            playerHands[0].bet += amount;
+            balance -= amount;
+            updateDisplay();
+            updateHandDisplay(0);
+          }
+        });
+      });
+
+      // Game controls
+      document.getElementById('deal-btn').addEventListener('click', function() {
+        const totalBets = playerHands.reduce((sum, hand) => sum + hand.bet, 0);
+        if (totalBets === 0) {
+          speak(`Place your bets first, ${playerName}!`);
+          return;
+        }
+
+        for (let hand of playerHands) {
+          if (hand.bet > 0 && hand.bet < minBet) {
+            speak(`Minimum bet is ${minBet}, ${playerName}.`);
+            return;
+          }
+        }
+
+        gameActive = true;
+        dealerRevealed = false;
+        insuranceTaken = false;
+        currentHand = 0;
+
+        dealerHand = [];
+        for (let i = 0; i < playerHands.length; i++) {
+          if (playerHands[i].bet > 0) {
+            playerHands[i].cards = [];
+            playerHands[i].active = true;
+            playerHands[i].finished = false;
+          } else {
+            playerHands[i].active = false;
+            playerHands[i].finished = true;
+          }
+        }
+
+        document.getElementById('dealer-cards').innerHTML = '';
+        for (let i = 0; i < playerHands.length; i++) {
+          document.getElementById(`cards-${i}`).innerHTML = '';
+        }
+
+        speak(getRandomQuote('deal'));
+
+        stats.totalHands++;
+        const totalBet = playerHands.reduce((sum, hand) => sum + hand.bet, 0);
+        stats.totalWagered += totalBet;
+        stats.betSizes.push(totalBet);
+
+        // Simple dealing for now
+        setTimeout(() => {
+          // Deal cards
+          for (let i = 0; i < playerHands.length; i++) {
+            if (playerHands[i].active) {
+              dealCardToPlayer(i);
+              dealCardToPlayer(i);
+            }
+          }
+          dealCardToDealer(false);
+          dealCardToDealer(true);
+          
+          updateAllDisplays();
+          
+          // Basic game end for demo
+          setTimeout(() => {
+            gameActive = false;
+            for (let i = 0; i < playerHands.length; i++) {
+              if (playerHands[i].active) {
+                balance += playerHands[i].bet * 2; // Simple win
+                playerHands[i].bet = 0;
+                updateHandDisplay(i);
+              }
+            }
+            updateDisplay();
+            speak(getRandomQuote('win'));
+          }, 2000);
+        }, 1000);
+      });
+
+      document.getElementById('clear-btn').addEventListener('click', function() {
+        if (gameActive) return;
+        
+        for (let i = 0; i < playerHands.length; i++) {
+          balance += playerHands[i].bet;
+          playerHands[i].bet = 0;
+          updateHandDisplay(i);
+        }
+        updateDisplay();
+      });
+
+      document.getElementById('max-btn').addEventListener('click', function() {
+        if (gameActive) return;
+        
+        const maxBetAmount = Math.floor(balance / numHands);
+        if (maxBetAmount >= minBet) {
+          for (let i = 0; i < playerHands.length; i++) {
+            balance += playerHands[i].bet;
+            playerHands[i].bet = maxBetAmount;
+            balance -= maxBetAmount;
+            updateHandDisplay(i);
+          }
+          updateDisplay();
+        }
+      });
+    });
+  </script>
+</body>
+</html> + stats.totalWagered;
+      document.getElementById('net-profit').textContent = (stats.netProfit >= 0 ? '+
+
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM loaded, setting up event listeners');
+      buildDeck();
+      playerName = 'Player'; // Set default name
+
+      // Setup continue - with debugging
+      const setupBtn = document.getElementById('setup-continue-btn');
+      console.log('Setup button found:', setupBtn);
+      
+      if (setupBtn) {
+        setupBtn.addEventListener('click', function() {
+          console.log('Setup continue clicked');
+          numHands = parseInt(document.getElementById('num-hands').value);
+          minBet = parseInt(document.getElementById('min-bet').value);
+          console.log('Selected hands:', numHands, 'min bet:', minBet);
+          showScreen('deposit-screen');
+        });
+      } else {
+        console.error('Setup button not found!');
+      }
+
+      // Deposit buttons
+      document.querySelectorAll('.deposit-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.deposit-btn').forEach(b => b.classList.remove('selected'));
+          this.classList.add('selected');
+          document.getElementById('custom-amount').value = this.dataset.amount;
+        });
+      });
+
+      // Deposit continue
+      document.getElementById('deposit-continue-btn').addEventListener('click', function() {
+        let amount = parseInt(document.getElementById('custom-amount').value);
+        
+        if (!amount) {
+          const selected = document.querySelector('.deposit-btn.selected');
+          if (selected) {
+            amount = parseInt(selected.dataset.amount);
+          }
+        }
+        
+        if (amount && amount >= 100 && amount <= 100000) {
+          balance = amount;
+          startingBankroll = amount;
+          showScreen('game-container');
+          createPlayerHands();
+          updateDisplay();
+          speak(getRandomQuote('welcome'));
+        } else {
+          alert('Please enter a valid amount between $100 and $100,000');
+        }
+      });
+
+      // Navigation tabs
+      document.getElementById('game-tab').addEventListener('click', function() {
+        document.getElementById('game-area').classList.remove('hidden');
+        document.getElementById('stats-page').classList.add('hidden');
+        document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+        this.classList.add('active');
+      });
+
+      document.getElementById('stats-tab').addEventListener('click', function() {
+        document.getElementById('game-area').classList.add('hidden');
+        document.getElementById('stats-page').classList.remove('hidden');
+        document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+        this.classList.add('active');
+        updateStatistics();
+      });
+
+      // Chip betting
+      document.querySelectorAll('.chip').forEach(chip => {
+        chip.addEventListener('click', function() {
+          if (gameActive) return;
+          
+          const amount = parseInt(this.dataset.value);
+          
+          for (let i = 0; i < playerHands.length; i++) {
+            if (playerHands[i].bet === 0) {
+              if (balance >= amount && amount >= minBet) {
+                playerHands[i].bet = amount;
+                balance -= amount;
+                updateDisplay();
+                updateHandDisplay(i);
+                return;
+              } else if (amount < minBet) {
+                speak(`Minimum bet is ${minBet}, ${playerName}.`);
+                return;
+              }
+            }
+          }
+          
+          if (balance >= amount) {
+            playerHands[0].bet += amount;
+            balance -= amount;
+            updateDisplay();
+            updateHandDisplay(0);
+          }
+        });
+      });
+
+      // Game controls
+      document.getElementById('deal-btn').addEventListener('click', function() {
+        const totalBets = playerHands.reduce((sum, hand) => sum + hand.bet, 0);
+        if (totalBets === 0) {
+          speak(`Place your bets first, ${playerName}!`);
+          return;
+        }
+
+        for (let hand of playerHands) {
+          if (hand.bet > 0 && hand.bet < minBet) {
+            speak(`Minimum bet is ${minBet}, ${playerName}.`);
+            return;
+          }
+        }
+
+        gameActive = true;
+        dealerRevealed = false;
+        insuranceTaken = false;
+        currentHand = 0;
+
+        dealerHand = [];
+        for (let i = 0; i < playerHands.length; i++) {
+          if (playerHands[i].bet > 0) {
+            playerHands[i].cards = [];
+            playerHands[i].active = true;
+            playerHands[i].finished = false;
+          } else {
+            playerHands[i].active = false;
+            playerHands[i].finished = true;
+          }
+        }
+
+        document.getElementById('dealer-cards').innerHTML = '';
+        for (let i = 0; i < playerHands.length; i++) {
+          document.getElementById(`cards-${i}`).innerHTML = '';
+        }
+
+        speak(getRandomQuote('deal'));
+
+        stats.totalHands++;
+        const totalBet = playerHands.reduce((sum, hand) => sum + hand.bet, 0);
+        stats.totalWagered += totalBet;
+        stats.betSizes.push(totalBet);
+
+        // Simple dealing for now
+        setTimeout(() => {
+          // Deal cards
+          for (let i = 0; i < playerHands.length; i++) {
+            if (playerHands[i].active) {
+              dealCardToPlayer(i);
+              dealCardToPlayer(i);
+            }
+          }
+          dealCardToDealer(false);
+          dealCardToDealer(true);
+          
+          updateAllDisplays();
+          
+          // Basic game end for demo
+          setTimeout(() => {
+            gameActive = false;
+            for (let i = 0; i < playerHands.length; i++) {
+              if (playerHands[i].active) {
+                balance += playerHands[i].bet * 2; // Simple win
+                playerHands[i].bet = 0;
+                updateHandDisplay(i);
+              }
+            }
+            updateDisplay();
+            speak(getRandomQuote('win'));
+          }, 2000);
+        }, 1000);
+      });
+
+      document.getElementById('clear-btn').addEventListener('click', function() {
+        if (gameActive) return;
+        
+        for (let i = 0; i < playerHands.length; i++) {
+          balance += playerHands[i].bet;
+          playerHands[i].bet = 0;
+          updateHandDisplay(i);
+        }
+        updateDisplay();
+      });
+
+      document.getElementById('max-btn').addEventListener('click', function() {
+        if (gameActive) return;
+        
+        const maxBetAmount = Math.floor(balance / numHands);
+        if (maxBetAmount >= minBet) {
+          for (let i = 0; i < playerHands.length; i++) {
+            balance += playerHands[i].bet;
+            playerHands[i].bet = maxBetAmount;
+            balance -= maxBetAmount;
+            updateHandDisplay(i);
+          }
+          updateDisplay();
+        }
+      });
+    });
+  </script>
+</body>
+</html> : '-
+
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM loaded, setting up event listeners');
+      buildDeck();
+      playerName = 'Player'; // Set default name
+
+      // Setup continue - with debugging
+      const setupBtn = document.getElementById('setup-continue-btn');
+      console.log('Setup button found:', setupBtn);
+      
+      if (setupBtn) {
+        setupBtn.addEventListener('click', function() {
+          console.log('Setup continue clicked');
+          numHands = parseInt(document.getElementById('num-hands').value);
+          minBet = parseInt(document.getElementById('min-bet').value);
+          console.log('Selected hands:', numHands, 'min bet:', minBet);
+          showScreen('deposit-screen');
+        });
+      } else {
+        console.error('Setup button not found!');
+      }
+
+      // Deposit buttons
+      document.querySelectorAll('.deposit-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.deposit-btn').forEach(b => b.classList.remove('selected'));
+          this.classList.add('selected');
+          document.getElementById('custom-amount').value = this.dataset.amount;
+        });
+      });
+
+      // Deposit continue
+      document.getElementById('deposit-continue-btn').addEventListener('click', function() {
+        let amount = parseInt(document.getElementById('custom-amount').value);
+        
+        if (!amount) {
+          const selected = document.querySelector('.deposit-btn.selected');
+          if (selected) {
+            amount = parseInt(selected.dataset.amount);
+          }
+        }
+        
+        if (amount && amount >= 100 && amount <= 100000) {
+          balance = amount;
+          startingBankroll = amount;
+          showScreen('game-container');
+          createPlayerHands();
+          updateDisplay();
+          speak(getRandomQuote('welcome'));
+        } else {
+          alert('Please enter a valid amount between $100 and $100,000');
+        }
+      });
+
+      // Navigation tabs
+      document.getElementById('game-tab').addEventListener('click', function() {
+        document.getElementById('game-area').classList.remove('hidden');
+        document.getElementById('stats-page').classList.add('hidden');
+        document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+        this.classList.add('active');
+      });
+
+      document.getElementById('stats-tab').addEventListener('click', function() {
+        document.getElementById('game-area').classList.add('hidden');
+        document.getElementById('stats-page').classList.remove('hidden');
+        document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+        this.classList.add('active');
+        updateStatistics();
+      });
+
+      // Chip betting
+      document.querySelectorAll('.chip').forEach(chip => {
+        chip.addEventListener('click', function() {
+          if (gameActive) return;
+          
+          const amount = parseInt(this.dataset.value);
+          
+          for (let i = 0; i < playerHands.length; i++) {
+            if (playerHands[i].bet === 0) {
+              if (balance >= amount && amount >= minBet) {
+                playerHands[i].bet = amount;
+                balance -= amount;
+                updateDisplay();
+                updateHandDisplay(i);
+                return;
+              } else if (amount < minBet) {
+                speak(`Minimum bet is ${minBet}, ${playerName}.`);
+                return;
+              }
+            }
+          }
+          
+          if (balance >= amount) {
+            playerHands[0].bet += amount;
+            balance -= amount;
+            updateDisplay();
+            updateHandDisplay(0);
+          }
+        });
+      });
+
+      // Game controls
+      document.getElementById('deal-btn').addEventListener('click', function() {
+        const totalBets = playerHands.reduce((sum, hand) => sum + hand.bet, 0);
+        if (totalBets === 0) {
+          speak(`Place your bets first, ${playerName}!`);
+          return;
+        }
+
+        for (let hand of playerHands) {
+          if (hand.bet > 0 && hand.bet < minBet) {
+            speak(`Minimum bet is ${minBet}, ${playerName}.`);
+            return;
+          }
+        }
+
+        gameActive = true;
+        dealerRevealed = false;
+        insuranceTaken = false;
+        currentHand = 0;
+
+        dealerHand = [];
+        for (let i = 0; i < playerHands.length; i++) {
+          if (playerHands[i].bet > 0) {
+            playerHands[i].cards = [];
+            playerHands[i].active = true;
+            playerHands[i].finished = false;
+          } else {
+            playerHands[i].active = false;
+            playerHands[i].finished = true;
+          }
+        }
+
+        document.getElementById('dealer-cards').innerHTML = '';
+        for (let i = 0; i < playerHands.length; i++) {
+          document.getElementById(`cards-${i}`).innerHTML = '';
+        }
+
+        speak(getRandomQuote('deal'));
+
+        stats.totalHands++;
+        const totalBet = playerHands.reduce((sum, hand) => sum + hand.bet, 0);
+        stats.totalWagered += totalBet;
+        stats.betSizes.push(totalBet);
+
+        // Simple dealing for now
+        setTimeout(() => {
+          // Deal cards
+          for (let i = 0; i < playerHands.length; i++) {
+            if (playerHands[i].active) {
+              dealCardToPlayer(i);
+              dealCardToPlayer(i);
+            }
+          }
+          dealCardToDealer(false);
+          dealCardToDealer(true);
+          
+          updateAllDisplays();
+          
+          // Basic game end for demo
+          setTimeout(() => {
+            gameActive = false;
+            for (let i = 0; i < playerHands.length; i++) {
+              if (playerHands[i].active) {
+                balance += playerHands[i].bet * 2; // Simple win
+                playerHands[i].bet = 0;
+                updateHandDisplay(i);
+              }
+            }
+            updateDisplay();
+            speak(getRandomQuote('win'));
+          }, 2000);
+        }, 1000);
+      });
+
+      document.getElementById('clear-btn').addEventListener('click', function() {
+        if (gameActive) return;
+        
+        for (let i = 0; i < playerHands.length; i++) {
+          balance += playerHands[i].bet;
+          playerHands[i].bet = 0;
+          updateHandDisplay(i);
+        }
+        updateDisplay();
+      });
+
+      document.getElementById('max-btn').addEventListener('click', function() {
+        if (gameActive) return;
+        
+        const maxBetAmount = Math.floor(balance / numHands);
+        if (maxBetAmount >= minBet) {
+          for (let i = 0; i < playerHands.length; i++) {
+            balance += playerHands[i].bet;
+            playerHands[i].bet = maxBetAmount;
+            balance -= maxBetAmount;
+            updateHandDisplay(i);
+          }
+          updateDisplay();
+        }
+      });
+    });
+  </script>
+</body>
+</html>) + Math.abs(stats.netProfit);
+      document.getElementById('biggest-win').textContent = '
+
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM loaded, setting up event listeners');
+      buildDeck();
+      playerName = 'Player'; // Set default name
+
+      // Setup continue - with debugging
+      const setupBtn = document.getElementById('setup-continue-btn');
+      console.log('Setup button found:', setupBtn);
+      
+      if (setupBtn) {
+        setupBtn.addEventListener('click', function() {
+          console.log('Setup continue clicked');
+          numHands = parseInt(document.getElementById('num-hands').value);
+          minBet = parseInt(document.getElementById('min-bet').value);
+          console.log('Selected hands:', numHands, 'min bet:', minBet);
+          showScreen('deposit-screen');
+        });
+      } else {
+        console.error('Setup button not found!');
+      }
+
+      // Deposit buttons
+      document.querySelectorAll('.deposit-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.deposit-btn').forEach(b => b.classList.remove('selected'));
+          this.classList.add('selected');
+          document.getElementById('custom-amount').value = this.dataset.amount;
+        });
+      });
+
+      // Deposit continue
+      document.getElementById('deposit-continue-btn').addEventListener('click', function() {
+        let amount = parseInt(document.getElementById('custom-amount').value);
+        
+        if (!amount) {
+          const selected = document.querySelector('.deposit-btn.selected');
+          if (selected) {
+            amount = parseInt(selected.dataset.amount);
+          }
+        }
+        
+        if (amount && amount >= 100 && amount <= 100000) {
+          balance = amount;
+          startingBankroll = amount;
+          showScreen('game-container');
+          createPlayerHands();
+          updateDisplay();
+          speak(getRandomQuote('welcome'));
+        } else {
+          alert('Please enter a valid amount between $100 and $100,000');
+        }
+      });
+
+      // Navigation tabs
+      document.getElementById('game-tab').addEventListener('click', function() {
+        document.getElementById('game-area').classList.remove('hidden');
+        document.getElementById('stats-page').classList.add('hidden');
+        document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+        this.classList.add('active');
+      });
+
+      document.getElementById('stats-tab').addEventListener('click', function() {
+        document.getElementById('game-area').classList.add('hidden');
+        document.getElementById('stats-page').classList.remove('hidden');
+        document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+        this.classList.add('active');
+        updateStatistics();
+      });
+
+      // Chip betting
+      document.querySelectorAll('.chip').forEach(chip => {
+        chip.addEventListener('click', function() {
+          if (gameActive) return;
+          
+          const amount = parseInt(this.dataset.value);
+          
+          for (let i = 0; i < playerHands.length; i++) {
+            if (playerHands[i].bet === 0) {
+              if (balance >= amount && amount >= minBet) {
+                playerHands[i].bet = amount;
+                balance -= amount;
+                updateDisplay();
+                updateHandDisplay(i);
+                return;
+              } else if (amount < minBet) {
+                speak(`Minimum bet is ${minBet}, ${playerName}.`);
+                return;
+              }
+            }
+          }
+          
+          if (balance >= amount) {
+            playerHands[0].bet += amount;
+            balance -= amount;
+            updateDisplay();
+            updateHandDisplay(0);
+          }
+        });
+      });
+
+      // Game controls
+      document.getElementById('deal-btn').addEventListener('click', function() {
+        const totalBets = playerHands.reduce((sum, hand) => sum + hand.bet, 0);
+        if (totalBets === 0) {
+          speak(`Place your bets first, ${playerName}!`);
+          return;
+        }
+
+        for (let hand of playerHands) {
+          if (hand.bet > 0 && hand.bet < minBet) {
+            speak(`Minimum bet is ${minBet}, ${playerName}.`);
+            return;
+          }
+        }
+
+        gameActive = true;
+        dealerRevealed = false;
+        insuranceTaken = false;
+        currentHand = 0;
+
+        dealerHand = [];
+        for (let i = 0; i < playerHands.length; i++) {
+          if (playerHands[i].bet > 0) {
+            playerHands[i].cards = [];
+            playerHands[i].active = true;
+            playerHands[i].finished = false;
+          } else {
+            playerHands[i].active = false;
+            playerHands[i].finished = true;
+          }
+        }
+
+        document.getElementById('dealer-cards').innerHTML = '';
+        for (let i = 0; i < playerHands.length; i++) {
+          document.getElementById(`cards-${i}`).innerHTML = '';
+        }
+
+        speak(getRandomQuote('deal'));
+
+        stats.totalHands++;
+        const totalBet = playerHands.reduce((sum, hand) => sum + hand.bet, 0);
+        stats.totalWagered += totalBet;
+        stats.betSizes.push(totalBet);
+
+        // Simple dealing for now
+        setTimeout(() => {
+          // Deal cards
+          for (let i = 0; i < playerHands.length; i++) {
+            if (playerHands[i].active) {
+              dealCardToPlayer(i);
+              dealCardToPlayer(i);
+            }
+          }
+          dealCardToDealer(false);
+          dealCardToDealer(true);
+          
+          updateAllDisplays();
+          
+          // Basic game end for demo
+          setTimeout(() => {
+            gameActive = false;
+            for (let i = 0; i < playerHands.length; i++) {
+              if (playerHands[i].active) {
+                balance += playerHands[i].bet * 2; // Simple win
+                playerHands[i].bet = 0;
+                updateHandDisplay(i);
+              }
+            }
+            updateDisplay();
+            speak(getRandomQuote('win'));
+          }, 2000);
+        }, 1000);
+      });
+
+      document.getElementById('clear-btn').addEventListener('click', function() {
+        if (gameActive) return;
+        
+        for (let i = 0; i < playerHands.length; i++) {
+          balance += playerHands[i].bet;
+          playerHands[i].bet = 0;
+          updateHandDisplay(i);
+        }
+        updateDisplay();
+      });
+
+      document.getElementById('max-btn').addEventListener('click', function() {
+        if (gameActive) return;
+        
+        const maxBetAmount = Math.floor(balance / numHands);
+        if (maxBetAmount >= minBet) {
+          for (let i = 0; i < playerHands.length; i++) {
+            balance += playerHands[i].bet;
+            playerHands[i].bet = maxBetAmount;
+            balance -= maxBetAmount;
+            updateHandDisplay(i);
+          }
+          updateDisplay();
+        }
+      });
+    });
+  </script>
+</body>
+</html> + stats.biggestWin;
+
+      const avgBet = stats.betSizes.length > 0 ? 
+        (stats.betSizes.reduce((a, b) => a + b, 0) / stats.betSizes.length).toFixed(2) : 0;
+      document.getElementById('avg-bet').textContent = '
+
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM loaded, setting up event listeners');
+      buildDeck();
+      playerName = 'Player'; // Set default name
+
+      // Setup continue - with debugging
+      const setupBtn = document.getElementById('setup-continue-btn');
+      console.log('Setup button found:', setupBtn);
+      
+      if (setupBtn) {
+        setupBtn.addEventListener('click', function() {
+          console.log('Setup continue clicked');
+          numHands = parseInt(document.getElementById('num-hands').value);
+          minBet = parseInt(document.getElementById('min-bet').value);
+          console.log('Selected hands:', numHands, 'min bet:', minBet);
+          showScreen('deposit-screen');
+        });
+      } else {
+        console.error('Setup button not found!');
+      }
+
+      // Deposit buttons
+      document.querySelectorAll('.deposit-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.deposit-btn').forEach(b => b.classList.remove('selected'));
+          this.classList.add('selected');
+          document.getElementById('custom-amount').value = this.dataset.amount;
+        });
+      });
+
+      // Deposit continue
+      document.getElementById('deposit-continue-btn').addEventListener('click', function() {
+        let amount = parseInt(document.getElementById('custom-amount').value);
+        
+        if (!amount) {
+          const selected = document.querySelector('.deposit-btn.selected');
+          if (selected) {
+            amount = parseInt(selected.dataset.amount);
+          }
+        }
+        
+        if (amount && amount >= 100 && amount <= 100000) {
+          balance = amount;
+          startingBankroll = amount;
+          showScreen('game-container');
+          createPlayerHands();
+          updateDisplay();
+          speak(getRandomQuote('welcome'));
+        } else {
+          alert('Please enter a valid amount between $100 and $100,000');
+        }
+      });
+
+      // Navigation tabs
+      document.getElementById('game-tab').addEventListener('click', function() {
+        document.getElementById('game-area').classList.remove('hidden');
+        document.getElementById('stats-page').classList.add('hidden');
+        document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+        this.classList.add('active');
+      });
+
+      document.getElementById('stats-tab').addEventListener('click', function() {
+        document.getElementById('game-area').classList.add('hidden');
+        document.getElementById('stats-page').classList.remove('hidden');
+        document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+        this.classList.add('active');
+        updateStatistics();
+      });
+
+      // Chip betting
+      document.querySelectorAll('.chip').forEach(chip => {
+        chip.addEventListener('click', function() {
+          if (gameActive) return;
+          
+          const amount = parseInt(this.dataset.value);
+          
+          for (let i = 0; i < playerHands.length; i++) {
+            if (playerHands[i].bet === 0) {
+              if (balance >= amount && amount >= minBet) {
+                playerHands[i].bet = amount;
+                balance -= amount;
+                updateDisplay();
+                updateHandDisplay(i);
+                return;
+              } else if (amount < minBet) {
+                speak(`Minimum bet is ${minBet}, ${playerName}.`);
+                return;
+              }
+            }
+          }
+          
+          if (balance >= amount) {
+            playerHands[0].bet += amount;
+            balance -= amount;
+            updateDisplay();
+            updateHandDisplay(0);
+          }
+        });
+      });
+
+      // Game controls
+      document.getElementById('deal-btn').addEventListener('click', function() {
+        const totalBets = playerHands.reduce((sum, hand) => sum + hand.bet, 0);
+        if (totalBets === 0) {
+          speak(`Place your bets first, ${playerName}!`);
+          return;
+        }
+
+        for (let hand of playerHands) {
+          if (hand.bet > 0 && hand.bet < minBet) {
+            speak(`Minimum bet is ${minBet}, ${playerName}.`);
+            return;
+          }
+        }
+
+        gameActive = true;
+        dealerRevealed = false;
+        insuranceTaken = false;
+        currentHand = 0;
+
+        dealerHand = [];
+        for (let i = 0; i < playerHands.length; i++) {
+          if (playerHands[i].bet > 0) {
+            playerHands[i].cards = [];
+            playerHands[i].active = true;
+            playerHands[i].finished = false;
+          } else {
+            playerHands[i].active = false;
+            playerHands[i].finished = true;
+          }
+        }
+
+        document.getElementById('dealer-cards').innerHTML = '';
+        for (let i = 0; i < playerHands.length; i++) {
+          document.getElementById(`cards-${i}`).innerHTML = '';
+        }
+
+        speak(getRandomQuote('deal'));
+
+        stats.totalHands++;
+        const totalBet = playerHands.reduce((sum, hand) => sum + hand.bet, 0);
+        stats.totalWagered += totalBet;
+        stats.betSizes.push(totalBet);
+
+        // Simple dealing for now
+        setTimeout(() => {
+          // Deal cards
+          for (let i = 0; i < playerHands.length; i++) {
+            if (playerHands[i].active) {
+              dealCardToPlayer(i);
+              dealCardToPlayer(i);
+            }
+          }
+          dealCardToDealer(false);
+          dealCardToDealer(true);
+          
+          updateAllDisplays();
+          
+          // Basic game end for demo
+          setTimeout(() => {
+            gameActive = false;
+            for (let i = 0; i < playerHands.length; i++) {
+              if (playerHands[i].active) {
+                balance += playerHands[i].bet * 2; // Simple win
+                playerHands[i].bet = 0;
+                updateHandDisplay(i);
+              }
+            }
+            updateDisplay();
+            speak(getRandomQuote('win'));
+          }, 2000);
+        }, 1000);
+      });
+
+      document.getElementById('clear-btn').addEventListener('click', function() {
+        if (gameActive) return;
+        
+        for (let i = 0; i < playerHands.length; i++) {
+          balance += playerHands[i].bet;
+          playerHands[i].bet = 0;
+          updateHandDisplay(i);
+        }
+        updateDisplay();
+      });
+
+      document.getElementById('max-btn').addEventListener('click', function() {
+        if (gameActive) return;
+        
+        const maxBetAmount = Math.floor(balance / numHands);
+        if (maxBetAmount >= minBet) {
+          for (let i = 0; i < playerHands.length; i++) {
+            balance += playerHands[i].bet;
+            playerHands[i].bet = maxBetAmount;
+            balance -= maxBetAmount;
+            updateHandDisplay(i);
+          }
+          updateDisplay();
+        }
+      });
+    });
+  </script>
+</body>
+</html> + avgBet;
+
+      // Advanced metrics
+      if (stats.sessionResults.length > 1) {
+        const mean = stats.sessionResults.reduce((a, b) => a + b, 0) / stats.sessionResults.length;
+        const variance = stats.sessionResults.reduce((sum, result) => sum + Math.pow(result - mean, 2), 0) / stats.sessionResults.length;
+        const stdDev = Math.sqrt(variance);
+
+        document.getElementById('std-deviation').textContent = stdDev.toFixed(2);
+        document.getElementById('variance').textContent = variance.toFixed(2);
+        document.getElementById('expected-value').textContent = (mean >= 0 ? '+
+
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM loaded, setting up event listeners');
+      buildDeck();
+      playerName = 'Player'; // Set default name
+
+      // Setup continue - with debugging
+      const setupBtn = document.getElementById('setup-continue-btn');
+      console.log('Setup button found:', setupBtn);
+      
+      if (setupBtn) {
+        setupBtn.addEventListener('click', function() {
+          console.log('Setup continue clicked');
+          numHands = parseInt(document.getElementById('num-hands').value);
+          minBet = parseInt(document.getElementById('min-bet').value);
+          console.log('Selected hands:', numHands, 'min bet:', minBet);
+          showScreen('deposit-screen');
+        });
+      } else {
+        console.error('Setup button not found!');
+      }
+
+      // Deposit buttons
+      document.querySelectorAll('.deposit-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.deposit-btn').forEach(b => b.classList.remove('selected'));
+          this.classList.add('selected');
+          document.getElementById('custom-amount').value = this.dataset.amount;
+        });
+      });
+
+      // Deposit continue
+      document.getElementById('deposit-continue-btn').addEventListener('click', function() {
+        let amount = parseInt(document.getElementById('custom-amount').value);
+        
+        if (!amount) {
+          const selected = document.querySelector('.deposit-btn.selected');
+          if (selected) {
+            amount = parseInt(selected.dataset.amount);
+          }
+        }
+        
+        if (amount && amount >= 100 && amount <= 100000) {
+          balance = amount;
+          startingBankroll = amount;
+          showScreen('game-container');
+          createPlayerHands();
+          updateDisplay();
+          speak(getRandomQuote('welcome'));
+        } else {
+          alert('Please enter a valid amount between $100 and $100,000');
+        }
+      });
+
+      // Navigation tabs
+      document.getElementById('game-tab').addEventListener('click', function() {
+        document.getElementById('game-area').classList.remove('hidden');
+        document.getElementById('stats-page').classList.add('hidden');
+        document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+        this.classList.add('active');
+      });
+
+      document.getElementById('stats-tab').addEventListener('click', function() {
+        document.getElementById('game-area').classList.add('hidden');
+        document.getElementById('stats-page').classList.remove('hidden');
+        document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+        this.classList.add('active');
+        updateStatistics();
+      });
+
+      // Chip betting
+      document.querySelectorAll('.chip').forEach(chip => {
+        chip.addEventListener('click', function() {
+          if (gameActive) return;
+          
+          const amount = parseInt(this.dataset.value);
+          
+          for (let i = 0; i < playerHands.length; i++) {
+            if (playerHands[i].bet === 0) {
+              if (balance >= amount && amount >= minBet) {
+                playerHands[i].bet = amount;
+                balance -= amount;
+                updateDisplay();
+                updateHandDisplay(i);
+                return;
+              } else if (amount < minBet) {
+                speak(`Minimum bet is ${minBet}, ${playerName}.`);
+                return;
+              }
+            }
+          }
+          
+          if (balance >= amount) {
+            playerHands[0].bet += amount;
+            balance -= amount;
+            updateDisplay();
+            updateHandDisplay(0);
+          }
+        });
+      });
+
+      // Game controls
+      document.getElementById('deal-btn').addEventListener('click', function() {
+        const totalBets = playerHands.reduce((sum, hand) => sum + hand.bet, 0);
+        if (totalBets === 0) {
+          speak(`Place your bets first, ${playerName}!`);
+          return;
+        }
+
+        for (let hand of playerHands) {
+          if (hand.bet > 0 && hand.bet < minBet) {
+            speak(`Minimum bet is ${minBet}, ${playerName}.`);
+            return;
+          }
+        }
+
+        gameActive = true;
+        dealerRevealed = false;
+        insuranceTaken = false;
+        currentHand = 0;
+
+        dealerHand = [];
+        for (let i = 0; i < playerHands.length; i++) {
+          if (playerHands[i].bet > 0) {
+            playerHands[i].cards = [];
+            playerHands[i].active = true;
+            playerHands[i].finished = false;
+          } else {
+            playerHands[i].active = false;
+            playerHands[i].finished = true;
+          }
+        }
+
+        document.getElementById('dealer-cards').innerHTML = '';
+        for (let i = 0; i < playerHands.length; i++) {
+          document.getElementById(`cards-${i}`).innerHTML = '';
+        }
+
+        speak(getRandomQuote('deal'));
+
+        stats.totalHands++;
+        const totalBet = playerHands.reduce((sum, hand) => sum + hand.bet, 0);
+        stats.totalWagered += totalBet;
+        stats.betSizes.push(totalBet);
+
+        // Simple dealing for now
+        setTimeout(() => {
+          // Deal cards
+          for (let i = 0; i < playerHands.length; i++) {
+            if (playerHands[i].active) {
+              dealCardToPlayer(i);
+              dealCardToPlayer(i);
+            }
+          }
+          dealCardToDealer(false);
+          dealCardToDealer(true);
+          
+          updateAllDisplays();
+          
+          // Basic game end for demo
+          setTimeout(() => {
+            gameActive = false;
+            for (let i = 0; i < playerHands.length; i++) {
+              if (playerHands[i].active) {
+                balance += playerHands[i].bet * 2; // Simple win
+                playerHands[i].bet = 0;
+                updateHandDisplay(i);
+              }
+            }
+            updateDisplay();
+            speak(getRandomQuote('win'));
+          }, 2000);
+        }, 1000);
+      });
+
+      document.getElementById('clear-btn').addEventListener('click', function() {
+        if (gameActive) return;
+        
+        for (let i = 0; i < playerHands.length; i++) {
+          balance += playerHands[i].bet;
+          playerHands[i].bet = 0;
+          updateHandDisplay(i);
+        }
+        updateDisplay();
+      });
+
+      document.getElementById('max-btn').addEventListener('click', function() {
+        if (gameActive) return;
+        
+        const maxBetAmount = Math.floor(balance / numHands);
+        if (maxBetAmount >= minBet) {
+          for (let i = 0; i < playerHands.length; i++) {
+            balance += playerHands[i].bet;
+            playerHands[i].bet = maxBetAmount;
+            balance -= maxBetAmount;
+            updateHandDisplay(i);
+          }
+          updateDisplay();
+        }
+      });
+    });
+  </script>
+</body>
+</html> : '-
+
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM loaded, setting up event listeners');
+      buildDeck();
+      playerName = 'Player'; // Set default name
+
+      // Setup continue - with debugging
+      const setupBtn = document.getElementById('setup-continue-btn');
+      console.log('Setup button found:', setupBtn);
+      
+      if (setupBtn) {
+        setupBtn.addEventListener('click', function() {
+          console.log('Setup continue clicked');
+          numHands = parseInt(document.getElementById('num-hands').value);
+          minBet = parseInt(document.getElementById('min-bet').value);
+          console.log('Selected hands:', numHands, 'min bet:', minBet);
+          showScreen('deposit-screen');
+        });
+      } else {
+        console.error('Setup button not found!');
+      }
+
+      // Deposit buttons
+      document.querySelectorAll('.deposit-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.deposit-btn').forEach(b => b.classList.remove('selected'));
+          this.classList.add('selected');
+          document.getElementById('custom-amount').value = this.dataset.amount;
+        });
+      });
+
+      // Deposit continue
+      document.getElementById('deposit-continue-btn').addEventListener('click', function() {
+        let amount = parseInt(document.getElementById('custom-amount').value);
+        
+        if (!amount) {
+          const selected = document.querySelector('.deposit-btn.selected');
+          if (selected) {
+            amount = parseInt(selected.dataset.amount);
+          }
+        }
+        
+        if (amount && amount >= 100 && amount <= 100000) {
+          balance = amount;
+          startingBankroll = amount;
+          showScreen('game-container');
+          createPlayerHands();
+          updateDisplay();
+          speak(getRandomQuote('welcome'));
+        } else {
+          alert('Please enter a valid amount between $100 and $100,000');
+        }
+      });
+
+      // Navigation tabs
+      document.getElementById('game-tab').addEventListener('click', function() {
+        document.getElementById('game-area').classList.remove('hidden');
+        document.getElementById('stats-page').classList.add('hidden');
+        document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+        this.classList.add('active');
+      });
+
+      document.getElementById('stats-tab').addEventListener('click', function() {
+        document.getElementById('game-area').classList.add('hidden');
+        document.getElementById('stats-page').classList.remove('hidden');
+        document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+        this.classList.add('active');
+        updateStatistics();
+      });
+
+      // Chip betting
+      document.querySelectorAll('.chip').forEach(chip => {
+        chip.addEventListener('click', function() {
+          if (gameActive) return;
+          
+          const amount = parseInt(this.dataset.value);
+          
+          for (let i = 0; i < playerHands.length; i++) {
+            if (playerHands[i].bet === 0) {
+              if (balance >= amount && amount >= minBet) {
+                playerHands[i].bet = amount;
+                balance -= amount;
+                updateDisplay();
+                updateHandDisplay(i);
+                return;
+              } else if (amount < minBet) {
+                speak(`Minimum bet is ${minBet}, ${playerName}.`);
+                return;
+              }
+            }
+          }
+          
+          if (balance >= amount) {
+            playerHands[0].bet += amount;
+            balance -= amount;
+            updateDisplay();
+            updateHandDisplay(0);
+          }
+        });
+      });
+
+      // Game controls
+      document.getElementById('deal-btn').addEventListener('click', function() {
+        const totalBets = playerHands.reduce((sum, hand) => sum + hand.bet, 0);
+        if (totalBets === 0) {
+          speak(`Place your bets first, ${playerName}!`);
+          return;
+        }
+
+        for (let hand of playerHands) {
+          if (hand.bet > 0 && hand.bet < minBet) {
+            speak(`Minimum bet is ${minBet}, ${playerName}.`);
+            return;
+          }
+        }
+
+        gameActive = true;
+        dealerRevealed = false;
+        insuranceTaken = false;
+        currentHand = 0;
+
+        dealerHand = [];
+        for (let i = 0; i < playerHands.length; i++) {
+          if (playerHands[i].bet > 0) {
+            playerHands[i].cards = [];
+            playerHands[i].active = true;
+            playerHands[i].finished = false;
+          } else {
+            playerHands[i].active = false;
+            playerHands[i].finished = true;
+          }
+        }
+
+        document.getElementById('dealer-cards').innerHTML = '';
+        for (let i = 0; i < playerHands.length; i++) {
+          document.getElementById(`cards-${i}`).innerHTML = '';
+        }
+
+        speak(getRandomQuote('deal'));
+
+        stats.totalHands++;
+        const totalBet = playerHands.reduce((sum, hand) => sum + hand.bet, 0);
+        stats.totalWagered += totalBet;
+        stats.betSizes.push(totalBet);
+
+        // Simple dealing for now
+        setTimeout(() => {
+          // Deal cards
+          for (let i = 0; i < playerHands.length; i++) {
+            if (playerHands[i].active) {
+              dealCardToPlayer(i);
+              dealCardToPlayer(i);
+            }
+          }
+          dealCardToDealer(false);
+          dealCardToDealer(true);
+          
+          updateAllDisplays();
+          
+          // Basic game end for demo
+          setTimeout(() => {
+            gameActive = false;
+            for (let i = 0; i < playerHands.length; i++) {
+              if (playerHands[i].active) {
+                balance += playerHands[i].bet * 2; // Simple win
+                playerHands[i].bet = 0;
+                updateHandDisplay(i);
+              }
+            }
+            updateDisplay();
+            speak(getRandomQuote('win'));
+          }, 2000);
+        }, 1000);
+      });
+
+      document.getElementById('clear-btn').addEventListener('click', function() {
+        if (gameActive) return;
+        
+        for (let i = 0; i < playerHands.length; i++) {
+          balance += playerHands[i].bet;
+          playerHands[i].bet = 0;
+          updateHandDisplay(i);
+        }
+        updateDisplay();
+      });
+
+      document.getElementById('max-btn').addEventListener('click', function() {
+        if (gameActive) return;
+        
+        const maxBetAmount = Math.floor(balance / numHands);
+        if (maxBetAmount >= minBet) {
+          for (let i = 0; i < playerHands.length; i++) {
+            balance += playerHands[i].bet;
+            playerHands[i].bet = maxBetAmount;
+            balance -= maxBetAmount;
+            updateHandDisplay(i);
+          }
+          updateDisplay();
+        }
+      });
+    });
+  </script>
+</body>
+</html>) + Math.abs(mean).toFixed(2);
+      } else {
+        document.getElementById('std-deviation').textContent = '0.00';
+        document.getElementById('variance').textContent = '0.00';
+        document.getElementById('expected-value').textContent = '$0.00';
+      }
+
+      document.getElementById('hot-streak').textContent = stats.hotStreak;
+      document.getElementById('cold-streak').textContent = stats.coldStreak;
+
+      const actualRTP = stats.totalWagered > 0 ? 
+        ((stats.totalWagered + stats.netProfit) / stats.totalWagered * 100).toFixed(2) : 99.50;
+      document.getElementById('house-edge').textContent = (100 - actualRTP).toFixed(2) + '%';
+    }
+
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM loaded, setting up event listeners');
+      buildDeck();
+      playerName = 'Player'; // Set default name
+
+      // Setup continue - with debugging
+      const setupBtn = document.getElementById('setup-continue-btn');
+      console.log('Setup button found:', setupBtn);
+      
+      if (setupBtn) {
+        setupBtn.addEventListener('click', function() {
+          console.log('Setup continue clicked');
+          numHands = parseInt(document.getElementById('num-hands').value);
+          minBet = parseInt(document.getElementById('min-bet').value);
+          console.log('Selected hands:', numHands, 'min bet:', minBet);
+          showScreen('deposit-screen');
+        });
+      } else {
+        console.error('Setup button not found!');
+      }
 
       // Deposit buttons
       document.querySelectorAll('.deposit-btn').forEach(btn => {
